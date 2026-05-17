@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+
+# Environment variables — never commit these
+.env
+.env.*
+!.env.example
+
+# Native build artifacts
+android/
+android/build/
+android/app/build/
+android/.gradle/
+ios/
+ios/build/
+ios/Pods/
+*.xcworkspace/
+!ios/*.xcworkspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Metro
+.metro-health-check*
+
+# TypeScript
+*.tsbuildinfo
