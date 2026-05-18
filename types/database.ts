@@ -24,14 +24,6 @@ export type Folder = {
   updated_at: string;
 };
 
-export type Tag = {
-  id: string;
-  user_id: string;
-  name: string;
-  color: string;
-  created_at: string;
-};
-
 export type Note = {
   id: string;
   user_id: string;
@@ -51,8 +43,7 @@ export type Note = {
   updated_at: string;
 };
 
-export type NoteWithTags = Note & {
-  tags: Tag[];
+export type NoteWithFolder = Note & {
   folder: Folder | null;
 };
 

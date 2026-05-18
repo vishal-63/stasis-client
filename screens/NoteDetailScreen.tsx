@@ -19,7 +19,7 @@ import Markdown from "react-native-markdown-display";
 import { RootStackParamList } from "../navigation/RootNavigator";
 import { getNoteById, subscribeToJob } from "../lib/db";
 import { getJobStatus } from "../lib/api";
-import { NoteWithTags, ProcessingJob, NoteStatus } from "../types/database";
+import { NoteWithFolder, ProcessingJob, NoteStatus } from "../types/database";
 import { useAuth } from "../context/AuthContext";
 import FolderPickerModal from "./FolderPickerModal";
 import { Text } from "../theme/components";
@@ -58,7 +58,7 @@ export default function NoteDetailScreen({ route, navigation }: Props) {
   const { user } = useAuth();
   const { theme } = useTheme();
 
-  const [note, setNote] = useState<NoteWithTags | null>(null);
+  const [note, setNote] = useState<NoteWithFolder | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [job, setJob] = useState<ProcessingJob | null>(null);
@@ -477,18 +477,6 @@ export default function NoteDetailScreen({ route, navigation }: Props) {
                   </Text>
                 </TouchableOpacity>
               )}
-              {(note.tags ?? []).map((tag) => (
-                <View
-                  key={tag.id}
-                  style={[styles.tagChip, { backgroundColor: theme.overlay }]}
-                >
-                  <Text
-                    style={[styles.tagChipText, { color: theme.textMuted }]}
-                  >
-                    {tag.name}
-                  </Text>
-                </View>
-              ))}
             </View>
           )}
 

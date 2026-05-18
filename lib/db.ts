@@ -1,14 +1,13 @@
 import { supabase } from "./supabase";
 import type {
   Note,
-  NoteWithTags,
+  NoteWithFolder,
   Folder,
-  Tag,
   ProcessingJob,
   Profile,
 } from "../types/database";
 
-// ─── PROFILE ──────────────────────────────────────────────────────────
+// ─── Profile ──────────────────────────────────────────────────────────
 export const getProfile = async (userId: string): Promise<Profile | null> => {
   const { data, error } = await supabase
     .from("profiles")
@@ -33,8 +32,7 @@ export const updateProfile = async (
   return data;
 };
 
-// ─── FOLDERS ──────────────────────────────────────────────────────────
-
+// ─── Folders ──────────────────────────────────────────────────────────
 export const getFolders = async (userId: string): Promise<Folder[]> => {
   const { data, error } = await supabase
     .from("folders")
@@ -48,7 +46,7 @@ export const getFolders = async (userId: string): Promise<Folder[]> => {
 export const createFolder = async (
   userId: string,
   name: string,
-  color = "#000000",
+  color = "#14BBA6",
 ): Promise<Folder> => {
   const { data, error } = await supabase
     .from("folders")
@@ -59,72 +57,41 @@ export const createFolder = async (
   return data;
 };
 
-export const deleteFolder = async (folderId: string): Promise<void> => {
-  // Notes in this folder will have folder_id set to null (set null on delete)
-  const { error } = await supabase.from("folders").delete().eq("id", folderId);
-  if (error) throw error;
-};
-
-export const moveNoteToFolder = async (
-  noteId: string,
+export const updateFolder = async (
   folderId: string,
-): Promise<void> => {
-  const { error } = await supabase
-    .from("notes")
-    .update({ folder_id: folderId })
-    .eq("id", noteId);
-  if (error) throw error;
-};
-
-// ─── TAGS ─────────────────────────────────────────────────────────────
-
-export const getTags = async (userId: string): Promise<Tag[]> => {
+  updates: Partial<Pick<Folder, "name" | "color">>,
+): Promise<Folder> => {
   const { data, error } = await supabase
-    .from("tags")
-    .select("*")
-    .eq("user_id", userId)
-    .order("name");
-  if (error) throw error;
-  return data ?? [];
-};
-
-export const createTag = async (
-  userId: string,
-  name: string,
-  color = "#000000",
-): Promise<Tag> => {
-  const { data, error } = await supabase
-    .from("tags")
-    .insert({ user_id: userId, name, color })
+    .from("folders")
+    .update(updates)
+    .eq("id", folderId)
     .select()
     .single();
   if (error) throw error;
   return data;
 };
 
-export const deleteTag = async (tagId: string): Promise<void> => {
-  const { error } = await supabase.from("tags").delete().eq("id", tagId);
+export const deleteFolder = async (folderId: string): Promise<void> => {
+  const { error } = await supabase.from("folders").delete().eq("id", folderId);
   if (error) throw error;
 };
 
-// ─── NOTES ────────────────────────────────────────────────────────────
+// ─── Notes ────────────────────────────────────────────────────────────
 
 export const getNotes = async (
   userId: string,
   opts: {
     folderId?: string;
-    tagId?: string;
     search?: string;
     sort?: "newest" | "oldest" | "folder";
   } = {},
-): Promise<NoteWithTags[]> => {
+): Promise<NoteWithFolder[]> => {
   let query = supabase
     .from("notes")
     .select(
       `
       *,
-      folder:folders(*),
-      note_tags(tag:tags(*))
+      folder:folders(*)
     `,
     )
     .eq("user_id", userId)
@@ -135,7 +102,6 @@ export const getNotes = async (
   }
 
   if (opts.search) {
-    // Use Postgres full-text search
     query = query.textSearch("fts", opts.search, {
       config: "english",
       type: "websearch",
@@ -144,55 +110,42 @@ export const getNotes = async (
 
   const { data, error } = await query;
   if (error) throw error;
-
-  // Flatten note_tags join into a tags array
-  return (data ?? []).map((note) => ({
-    ...note,
-    tags: note.note_tags?.map((nt: any) => nt.tag).filter(Boolean) ?? [],
-  }));
+  return data ?? [];
 };
 
 export const getNoteById = async (
   noteId: string,
-): Promise<NoteWithTags | null> => {
+): Promise<NoteWithFolder | null> => {
   const { data, error } = await supabase
     .from("notes")
     .select(
       `
       *,
-      folder:folders(*),
-      note_tags(tag:tags(*))
+      folder:folders(*)
     `,
     )
     .eq("id", noteId)
     .single();
   if (error) throw error;
-  return {
-    ...data,
-    tags: data.note_tags?.map((nt: any) => nt.tag).filter(Boolean) ?? [],
-  };
+  return data;
 };
 
 export const getNoteByShareToken = async (
   token: string,
-): Promise<NoteWithTags | null> => {
+): Promise<NoteWithFolder | null> => {
   const { data, error } = await supabase
     .from("notes")
     .select(
       `
       *,
-      folder:folders(*),
-      note_tags(tag:tags(*))
+      folder:folders(*)
     `,
     )
     .eq("share_token", token)
     .eq("is_shared", true)
     .single();
   if (error) throw error;
-  return {
-    ...data,
-    tags: data.note_tags?.map((nt: any) => nt.tag).filter(Boolean) ?? [],
-  };
+  return data;
 };
 
 export const createNote = async (
@@ -252,28 +205,18 @@ export const toggleNoteSharing = async (
   return updateNote(noteId, { is_shared: isShared });
 };
 
-// ─── NOTE TAGS ────────────────────────────────────────────────────────
-
-export const setNoteTags = async (
+export const moveNoteToFolder = async (
   noteId: string,
-  tagIds: string[],
+  folderId: string,
 ): Promise<void> => {
-  // Delete existing tags for this note then re-insert
-  const { error: deleteError } = await supabase
-    .from("note_tags")
-    .delete()
-    .eq("note_id", noteId);
-  if (deleteError) throw deleteError;
-
-  if (tagIds.length === 0) return;
-
-  const { error: insertError } = await supabase
-    .from("note_tags")
-    .insert(tagIds.map((tag_id) => ({ note_id: noteId, tag_id })));
-  if (insertError) throw insertError;
+  const { error } = await supabase
+    .from("notes")
+    .update({ folder_id: folderId })
+    .eq("id", noteId);
+  if (error) throw error;
 };
 
-// ─── PROCESSING JOBS ─────────────────────────────────────────────────
+// ─── Processing jobs ──────────────────────────────────────────────────
 
 export const createProcessingJob = async (
   noteId: string,
@@ -302,7 +245,6 @@ export const getProcessingJob = async (
   return data;
 };
 
-// Subscribe to real-time job updates
 export const subscribeToJob = (
   noteId: string,
   onUpdate: (job: ProcessingJob) => void,
@@ -322,7 +264,7 @@ export const subscribeToJob = (
     .subscribe();
 };
 
-// ─── STORAGE ──────────────────────────────────────────────────────────
+// ─── Storage ──────────────────────────────────────────────────────────
 
 export const uploadThumbnail = async (
   userId: string,

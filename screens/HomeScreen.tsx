@@ -13,17 +13,14 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import { supabase } from "../lib/supabase";
 import { getNotes } from "../lib/db";
 import { useAuth } from "../context/AuthContext";
-import { NoteWithTags } from "../types/database";
+import { NoteWithFolder } from "../types/database";
 import { RootStackParamList } from "../navigation/RootNavigator";
 import { display, fontSize, ui } from "../theme/typography";
 import { radius, spacing } from "../theme/spacing";
@@ -57,7 +54,7 @@ const formatDate = (iso: string) =>
 // ─── Note card ────────────────────────────────────────────────────────
 
 type NoteCardProps = {
-  item: NoteWithTags;
+  item: NoteWithFolder;
   onPress: () => void;
   onLongPress: () => void;
   onMorePress: () => void;
@@ -183,17 +180,16 @@ export default function HomeScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<NavigationProp>();
 
-  const [notes, setNotes] = useState<NoteWithTags[]>([]);
-  const [filtered, setFiltered] = useState<NoteWithTags[]>([]);
+  const [notes, setNotes] = useState<NoteWithFolder[]>([]);
+  const [filtered, setFiltered] = useState<NoteWithFolder[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
   const [sort, setSort] = useState<SortOption>("newest");
   const [searchFocused, setSearchFocused] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [folderPickerNote, setFolderPickerNote] = useState<NoteWithTags | null>(
-    null,
-  );
+  const [folderPickerNote, setFolderPickerNote] =
+    useState<NoteWithFolder | null>(null);
   const [search, setSearch] = useState("");
   const debouncedSearchTerm = useDebounce(search, 200);
 
@@ -252,14 +248,14 @@ export default function HomeScreen() {
     ]);
   };
 
-  const shareNote = async (note: NoteWithTags) => {
+  const shareNote = async (note: NoteWithFolder) => {
     await Share.share({
       title: note.title ?? "Stasis",
       message: `${note.title}\n\n${note.summary}\n\nSource: ${note.source_url}`,
     });
   };
 
-  const showNoteActions = (note: NoteWithTags) => {
+  const showNoteActions = (note: NoteWithFolder) => {
     if (Platform.OS === "ios") {
       ActionSheetIOS.showActionSheetWithOptions(
         {
