@@ -39,7 +39,7 @@ export default function RootNavigator({ navigationRef }: Props) {
     <NavigationContainer
       ref={navigationRef}
       linking={{
-        prefixes: ["reelnotes://"],
+        prefixes: ["stasis://"],
         config: { screens: { AuthCallback: "auth/callback" } },
       }}
     >

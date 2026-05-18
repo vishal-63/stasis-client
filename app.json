@@ -1,22 +1,22 @@
 {
   "expo": {
-    "name": "ReelNotes",
-    "slug": "reelnotes",
-    "scheme": "reelnotes",
+    "name": "Stasis",
+    "slug": "stasis",
+    "scheme": "stasis",
     "version": "1.0.0",
     "ios": {
-      "bundleIdentifier": "com.vishal.reelnotes",
+      "bundleIdentifier": "com.vishal.stasis",
       "backgroundColor": "#F8FAFC"
     },
     "android": {
-      "package": "com.vishal.reelnotes",
+      "package": "com.vishal.stasis",
       "backgroundColor": "#F8FAFC",
       "intentFilters": [
         {
           "action": "VIEW",
           "data": [
             {
-              "scheme": "reelnotes"
+              "scheme": "stasis"
             }
           ],
           "category": ["BROWSABLE", "DEFAULT"]

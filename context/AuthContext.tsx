@@ -64,7 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   //   const { data, error } = await supabase.auth.signInWithOAuth({
   //     provider: "google",
   //     options: {
-  //       redirectTo: "reelnotes://auth/callback",
+  //       redirectTo: "stasis://auth/callback",
   //       skipBrowserRedirect: true,
   //     },
   //   });
@@ -73,7 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   //   const result = await WebBrowser.openAuthSessionAsync(
   //     data.url,
-  //     "reelnotes://auth/callback",
+  //     "stasis://auth/callback",
   //   );
 
   //   if (result.type === "success") {

@@ -274,7 +274,7 @@ export default function ProcessingScreen({
               </Text>
             ) : (
               <Text style={[styles.logoLetter, { color: theme.accentPrimary }]}>
-                R
+                S
               </Text>
             )}
           </View>

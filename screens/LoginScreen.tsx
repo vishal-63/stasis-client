@@ -132,7 +132,7 @@ export default function LoginScreen() {
                   },
                 ]}
               >
-                R
+                S
               </Text>
             </View>
             <Text
@@ -143,7 +143,7 @@ export default function LoginScreen() {
                 },
               ]}
             >
-              ReelNotes
+              Stasis
             </Text>
             <Text variant="muted" style={styles.tagline}>
               Save insights from any Instagram Reel

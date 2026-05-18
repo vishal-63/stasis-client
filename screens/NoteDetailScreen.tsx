@@ -138,7 +138,7 @@ export default function NoteDetailScreen({ route, navigation }: Props) {
   const handleShare = async () => {
     if (!note) return;
     await Share.share({
-      title: note.title ?? "ReelNote",
+      title: note.title ?? "Stasis",
       message: `${note.title}\n\n${note.summary}\n\nSource: ${note.source_url}`,
     });
   };

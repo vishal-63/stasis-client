@@ -254,7 +254,7 @@ export default function HomeScreen() {
 
   const shareNote = async (note: NoteWithTags) => {
     await Share.share({
-      title: note.title ?? "ReelNote",
+      title: note.title ?? "Stasis",
       message: `${note.title}\n\n${note.summary}\n\nSource: ${note.source_url}`,
     });
   };
@@ -374,7 +374,7 @@ export default function HomeScreen() {
 
         {/* Centre — title */}
         <Text style={[styles.navTitle, { color: theme.textPrimary }]}>
-          Reel Notes
+          Stasis
         </Text>
 
         {/* Right — placeholder for balance */}
