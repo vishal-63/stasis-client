@@ -15,7 +15,7 @@ import { useAuth } from "../context/AuthContext";
 import { Folder } from "../types/database";
 import { createFolder, deleteFolder, getFolders } from "../lib/db";
 import { Text } from "../theme/components";
-import { display, ui } from "../theme/typography";
+import { display, lineHeight, ui } from "../theme/typography";
 import { radius, spacing } from "../theme/spacing";
 import { useTheme } from "../theme";
 
@@ -464,6 +464,7 @@ const styles = StyleSheet.create({
   createInput: {
     flex: 1,
     ...ui.body,
+    lineHeight: lineHeight.tight,
     borderRadius: radius.md,
     borderWidth: 0.5,
     paddingHorizontal: spacing[3],

@@ -12,7 +12,7 @@ import HomeScreen from "../screens/HomeScreen";
 import NoteDetailScreen from "../screens/NoteDetailScreen";
 
 export type RootStackParamList = {
-  Home: undefined;
+  Home: { activeFolderId?: string } | undefined;
   NoteDetail: { noteId: string };
   Login: undefined;
   AuthCallback: { token: string };

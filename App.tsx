@@ -136,6 +136,19 @@ function AppContent() {
     setProcessing(null);
   };
 
+  // Ping backend every 10 minutes to prevent cold starts
+  useEffect(() => {
+    const keepAlive = async () => {
+      try {
+        await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/health`);
+      } catch {}
+    };
+
+    keepAlive(); // ping on app open
+    const interval = setInterval(keepAlive, 10 * 60 * 1000); // every 10 min
+    return () => clearInterval(interval);
+  }, []);
+
   if (processing) {
     return (
       <ProcessingScreen

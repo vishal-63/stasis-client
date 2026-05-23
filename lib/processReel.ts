@@ -1,10 +1,8 @@
-import { createNote, createProcessingJob } from "./db";
+import { createNote } from "./db";
 import { submitReelForProcessing } from "./api";
-import { Alert } from "react-native";
 
 export type ProcessReelResult = {
   noteId: string;
-  jobId: string;
 };
 
 export async function processReelUrl(
@@ -14,17 +12,16 @@ export async function processReelUrl(
   try {
     // 1. Create a shell note row in Supabase
     const note = await createNote(userId, url);
+    console.log("Note created:", note.id);
 
-    // 2. Create a processing job row
-    await createProcessingJob(note.id, userId);
-    console.log("Created processing job for note ID:", note.id);
-
-    // 3. Submit to backend — backend fills in content when done
-    const response = await submitReelForProcessing(note.id, url);
+    // 2. Submit to backend — backend fills in content when done
+    // The poller will pick it up when done or even if this fails
+    submitReelForProcessing(note.id, url).catch((e) => {
+      console.warn("Backend submit failed, poller will retry:", e.message);
+    });
 
     return {
       noteId: note.id,
-      jobId: response.job_id,
     };
   } catch (error) {
     console.error("Error in processReelUrl:", error);

@@ -47,18 +47,18 @@ export async function submitReelForProcessing(
   }
 }
 
-export async function getJobStatus(noteId: string) {
-  const headers = await getAuthHeaders();
+// export async function getJobStatus(noteId: string) {
+//   const headers = await getAuthHeaders();
 
-  const response = await fetch(`${BACKEND_URL}/jobs/${noteId}`, {
-    method: "GET",
-    headers,
-  });
+//   const response = await fetch(`${BACKEND_URL}/jobs/${noteId}`, {
+//     method: "GET",
+//     headers,
+//   });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.detail ?? `Server error: ${response.status}`);
-  }
+//   if (!response.ok) {
+//     const error = await response.json().catch(() => ({}));
+//     throw new Error(error.detail ?? `Server error: ${response.status}`);
+//   }
 
-  return response.json();
-}
+//   return response.json();
+// }

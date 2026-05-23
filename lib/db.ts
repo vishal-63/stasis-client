@@ -218,19 +218,6 @@ export const moveNoteToFolder = async (
 
 // ─── Processing jobs ──────────────────────────────────────────────────
 
-export const createProcessingJob = async (
-  noteId: string,
-  userId: string,
-): Promise<ProcessingJob> => {
-  const { data, error } = await supabase
-    .from("processing_jobs")
-    .insert({ note_id: noteId, user_id: userId, status: "queued" })
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
-};
-
 export const getProcessingJob = async (
   noteId: string,
 ): Promise<ProcessingJob | null> => {

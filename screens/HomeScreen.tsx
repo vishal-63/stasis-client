@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useRoute, RouteProp, useFocusEffect } from "@react-navigation/native";
 
 import { supabase } from "../lib/supabase";
 import { getNotes } from "../lib/db";
@@ -179,12 +180,15 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const { theme } = useTheme();
   const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<RouteProp<RootStackParamList, "Home">>();
 
   const [notes, setNotes] = useState<NoteWithFolder[]>([]);
   const [filtered, setFiltered] = useState<NoteWithFolder[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeFolder, setActiveFolder] = useState<string | null>(null);
+  const [activeFolder, setActiveFolder] = useState<string | null>(
+    route.params?.activeFolderId ?? null,
+  );
   const [sort, setSort] = useState<SortOption>("newest");
   const [searchFocused, setSearchFocused] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -195,18 +199,44 @@ export default function HomeScreen() {
 
   // ─── Fetch ───────────────────────────────────────────────────────
 
-  const fetchNotes = useCallback(async () => {
-    const data = await getNotes(user!.id, {
-      folderId: activeFolder ?? undefined,
-      sort,
-    });
-    setNotes(data);
-  }, [user, activeFolder, sort]);
+  const fetchNotes = useCallback(
+    async (folderId?: string | null) => {
+      const data = await getNotes(user!.id, {
+        folderId:
+          (folderId !== undefined ? folderId : activeFolder) ?? undefined,
+        sort,
+      });
+      setNotes(data);
+    },
+    [user, activeFolder, sort],
+  );
 
   useEffect(() => {
     setLoading(true);
     fetchNotes().finally(() => setLoading(false));
   }, [fetchNotes]);
+
+  // Update useFocusEffect to fetch immediately with the new folder
+  useFocusEffect(
+    useCallback(() => {
+      const activeFolderId = route.params?.activeFolderId;
+      if (activeFolderId && activeFolderId !== activeFolder) {
+        setActiveFolder(activeFolderId);
+        navigation.setParams({ activeFolderId: undefined });
+      }
+    }, [route.params?.activeFolderId]),
+  );
+
+  useEffect(() => {
+    if (route.params?.activeFolderId) {
+      navigation.setParams({ activeFolderId: undefined });
+    }
+  }, []);
+
+  useEffect(
+    () => console.log("activeFolder changed", activeFolder),
+    [activeFolder],
+  );
 
   // ─── Filter ──────────────────────────────────────────────────────
 
@@ -227,7 +257,7 @@ export default function HomeScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchNotes();
+    await fetchNotes(activeFolder);
     setRefreshing(false);
   };
 

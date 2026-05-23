@@ -14,11 +14,13 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Markdown from "react-native-markdown-display";
 import { RootStackParamList } from "../navigation/RootNavigator";
-import { getNoteById, subscribeToJob } from "../lib/db";
-import { getJobStatus } from "../lib/api";
+import { getNoteById, getProcessingJob, subscribeToJob } from "../lib/db";
+// import { getJobStatus } from "../lib/api";
 import { NoteWithFolder, ProcessingJob, NoteStatus } from "../types/database";
 import { useAuth } from "../context/AuthContext";
 import FolderPickerModal from "./FolderPickerModal";
@@ -53,6 +55,8 @@ const statusColor = (status: NoteStatus, theme: any) =>
   })[status] ?? theme.textMuted;
 
 export default function NoteDetailScreen({ route, navigation }: Props) {
+  // const navigation =
+  //   useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { noteId } = route.params;
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
@@ -98,27 +102,30 @@ export default function NoteDetailScreen({ route, navigation }: Props) {
     setJobLoading(true);
 
     // Immediate fetch
-    getJobStatus(noteId)
+    getProcessingJob(noteId)
       .then((j) => {
-        setJob(j);
-        setJobLoading(false);
+        if (j) {
+          setJob(j);
+          setJobLoading(false);
+        }
       })
       .catch(() => setJobLoading(false));
 
-    // Poll every 4 seconds
+    // Poll every 3 seconds
     const poll = setInterval(async () => {
       try {
-        const j = await getJobStatus(noteId);
-        setJob(j);
-        if (j.status === "done" || j.status === "failed") {
-          clearInterval(poll);
-          // Refetch the note to get the completed content
-          fetchNote();
+        const j = await getProcessingJob(noteId);
+        if (j) {
+          setJob(j);
+          if (j.status === "done" || j.status === "failed") {
+            clearInterval(poll);
+            fetchNote();
+          }
         }
       } catch {
         /* non-fatal */
       }
-    }, 4000);
+    }, 3000);
 
     // Realtime subscription
     const channel = subscribeToJob(noteId, (updatedJob) => {
@@ -453,7 +460,7 @@ export default function NoteDetailScreen({ route, navigation }: Props) {
             {note.title ?? (isProcessing ? "Processing…" : "Untitled")}
           </Text>
 
-          {/* Folder + tags */}
+          {/* Folder */}
           {!isProcessing && (
             <View style={styles.metaRow}>
               {note.folder && (
@@ -465,7 +472,12 @@ export default function NoteDetailScreen({ route, navigation }: Props) {
                       borderColor: theme.accentPrimary,
                     },
                   ]}
-                  onPress={() => setFolderPickerVisible(true)}
+                  onPress={() => {
+                    console.log(note.folder, note.folder_id);
+                    navigation.navigate("Home", {
+                      activeFolderId: note.folder!.id,
+                    });
+                  }}
                 >
                   <Text
                     style={[

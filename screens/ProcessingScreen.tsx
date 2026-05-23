@@ -8,8 +8,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
-import { getJobStatus } from "../lib/api";
-import { subscribeToJob } from "../lib/db";
+// import { getJobStatus } from "../lib/api";
+import { getProcessingJob, subscribeToJob } from "../lib/db";
 import { useTheme } from "../theme/ThemeContext";
 import { display, fontSize, lineHeight, ui } from "../theme/typography";
 import { radius, spacing } from "../theme/spacing";
@@ -59,20 +59,20 @@ export default function ProcessingScreen({
 
   // Animations
   const rotateAnim = useRef(new Animated.Value(0)).current;
-  const progressAnim = useRef(new Animated.Value(0)).current;
+  // const progressAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.92)).current;
   const stepAnims = useRef(STEPS.map(() => new Animated.Value(0))).current;
 
-  const handleUpdateRef =
-    useRef<
-      (
+  const handleUpdateRef = useRef<
+    | ((
         status: string,
         stage: string | null,
         progress: number,
         error?: string | null,
-      ) => void
-    >(null);
+      ) => void)
+    | null
+  >(null);
 
   handleUpdateRef.current = (status, updatedStage, updatedProgress, error) => {
     setStage(updatedStage ?? STAGE_LABELS[status] ?? "Processing…");
@@ -133,50 +133,67 @@ export default function ProcessingScreen({
   }, [completed]);
 
   // Progress ring
-  useEffect(() => {
-    Animated.timing(progressAnim, {
-      toValue: progress,
-      duration: 700,
-      useNativeDriver: false,
-      easing: Easing.out(Easing.cubic),
-    }).start();
-  }, [progress]);
+  // useEffect(() => {
+  //   Animated.timing(progressAnim, {
+  //     toValue: progress,
+  //     duration: 700,
+  //     useNativeDriver: false,
+  //     easing: Easing.out(Easing.cubic),
+  //   }).start();
+  // }, [progress]);
 
   // Polling + Realtime
   useEffect(() => {
-    const poll = setInterval(async () => {
+    const isDone = { current: false };
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
+
+    const handleJob = (
+      status: string,
+      stage: string | null,
+      progress: number,
+      error?: string | null,
+    ) => {
+      if (isDone.current) return;
+
+      handleUpdateRef.current?.(status, stage, progress, error);
+
+      if (status === "done" || status === "failed") {
+        isDone.current = true;
+        if (pollInterval) {
+          clearInterval(pollInterval);
+          pollInterval = null;
+        }
+      }
+    };
+
+    getProcessingJob(noteId)
+      .then((job) => {
+        if (job) handleJob(job.status, job.stage, job.progress, job.error);
+      })
+      .catch(() => {});
+
+    // (Realtime handles instant updates, poll catches any missed ones)
+    pollInterval = setInterval(async () => {
+      if (isDone.current) {
+        if (pollInterval) clearInterval(pollInterval);
+        return;
+      }
       try {
-        const job = await getJobStatus(noteId);
-        handleUpdateRef.current?.(
-          job.status,
-          job.stage,
-          job.progress,
-          job.error,
-        );
-        if (job.status === "done" || job.status === "failed")
-          clearInterval(poll);
+        const job = await getProcessingJob(noteId);
+        if (job) handleJob(job.status, job.stage, job.progress, job.error);
       } catch {
         /* non-fatal */
       }
-    }, 4000);
+    }, 3000);
 
+    // Realtime for instant updates
     const channel = subscribeToJob(noteId, (job) => {
-      handleUpdateRef.current?.(job.status, job.stage, job.progress, job.error);
+      handleJob(job.status, job.stage, job.progress, job.error);
     });
 
-    getJobStatus(noteId)
-      .then((job) =>
-        handleUpdateRef.current?.(
-          job.status,
-          job.stage,
-          job.progress,
-          job.error,
-        ),
-      )
-      .catch(() => {});
-
     return () => {
-      clearInterval(poll);
+      isDone.current = true;
+      if (pollInterval) clearInterval(pollInterval);
       channel.unsubscribe();
     };
   }, [noteId]);
@@ -186,10 +203,10 @@ export default function ProcessingScreen({
     outputRange: ["0deg", "360deg"],
   });
 
-  const strokeDashoffset = progressAnim.interpolate({
-    inputRange: [0, 100],
-    outputRange: [CIRCUMFERENCE, 0],
-  });
+  // const strokeDashoffset = progressAnim.interpolate({
+  //   inputRange: [0, 100],
+  //   outputRange: [CIRCUMFERENCE, 0],
+  // });
 
   return (
     <SafeAreaView
@@ -219,7 +236,7 @@ export default function ProcessingScreen({
               fill="none"
             />
             {/* Progress fill */}
-            <AnimatedCircle
+            {/* <AnimatedCircle
               cx={RING_SIZE / 2}
               cy={RING_SIZE / 2}
               r={RING_RADIUS}
@@ -231,7 +248,7 @@ export default function ProcessingScreen({
               strokeLinecap="round"
               rotation="-90"
               origin={`${RING_SIZE / 2}, ${RING_SIZE / 2}`}
-            />
+            /> */}
           </Svg>
 
           {/* Spinning arc overlay — native driven */}
