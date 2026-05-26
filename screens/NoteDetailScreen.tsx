@@ -509,28 +509,34 @@ export default function NoteDetailScreen({ route, navigation }: Props) {
           {/* ── Processing state ── */}
           {isProcessing && (
             <View style={styles.processingSection}>
-              {/* Status pill */}
-              <View
-                style={[
-                  styles.statusPill,
-                  { backgroundColor: theme.accentSubtle },
-                ]}
-              >
+              {/* Numeric progress ring */}
+              <View style={styles.processingRingWrap}>
                 <View
                   style={[
-                    styles.statusDot,
-                    { backgroundColor: theme.accentPrimary },
-                  ]}
-                />
-                <Text
-                  style={[
-                    styles.statusPillText,
-                    { color: theme.accentPrimary },
+                    styles.processingRing,
+                    {
+                      borderColor: theme.accentPrimary,
+                      backgroundColor: theme.accentSubtle,
+                    },
                   ]}
                 >
-                  {STAGE_LABELS[note.status] ?? "Processing…"}
-                </Text>
+                  <Text
+                    style={[
+                      styles.processingPct,
+                      { color: theme.accentPrimary },
+                    ]}
+                  >
+                    {job?.progress ?? 0}%
+                  </Text>
+                </View>
               </View>
+
+              {/* Label */}
+              <Text
+                style={[styles.processingLabel, { color: theme.textMuted }]}
+              >
+                Processing your note…
+              </Text>
 
               {/* Progress bar */}
               <View
@@ -548,115 +554,6 @@ export default function NoteDetailScreen({ route, navigation }: Props) {
                     },
                   ]}
                 />
-              </View>
-              <Text style={[styles.progressPct, { color: theme.textMuted }]}>
-                {job?.progress ?? 0}%
-              </Text>
-
-              {/* Steps */}
-              <View
-                style={[
-                  styles.stepsCard,
-                  {
-                    backgroundColor: theme.raised,
-                    borderColor: theme.borderSubtle,
-                  },
-                ]}
-              >
-                {STEPS.map((step, i) => {
-                  const p = job?.progress ?? 0;
-                  const isDone = p >= step.doneAt;
-                  const isActive = p >= step.activeAt && !isDone;
-                  return (
-                    <View
-                      key={step.label}
-                      style={[
-                        styles.stepRow,
-                        i < STEPS.length - 1 && {
-                          borderBottomWidth: 0.5,
-                          borderBottomColor: theme.borderSubtle,
-                        },
-                      ]}
-                    >
-                      <View
-                        style={[
-                          styles.stepIcon,
-                          {
-                            backgroundColor: isDone
-                              ? theme.accentPrimary
-                              : isActive
-                                ? theme.accentSubtle
-                                : theme.overlay,
-                            borderColor:
-                              isDone || isActive
-                                ? theme.accentPrimary
-                                : theme.borderDefault,
-                          },
-                        ]}
-                      >
-                        {isDone ? (
-                          <Text
-                            style={[
-                              styles.stepCheck,
-                              { color: theme.textInverse },
-                            ]}
-                          >
-                            ✓
-                          </Text>
-                        ) : isActive ? (
-                          <View
-                            style={[
-                              styles.stepDot,
-                              { backgroundColor: theme.accentPrimary },
-                            ]}
-                          />
-                        ) : (
-                          <Text
-                            style={[styles.stepNum, { color: theme.textMuted }]}
-                          >
-                            {i + 1}
-                          </Text>
-                        )}
-                      </View>
-                      <Text
-                        style={[
-                          styles.stepLabel,
-                          {
-                            color: isDone
-                              ? theme.textPrimary
-                              : isActive
-                                ? theme.accentHighlight
-                                : theme.textMuted,
-                            flex: 1,
-                            fontWeight: isDone || isActive ? "500" : "400",
-                          },
-                        ]}
-                      >
-                        {step.label}
-                      </Text>
-                      {isDone && (
-                        <Text
-                          style={[
-                            styles.stepStatus,
-                            { color: theme.accentPrimary },
-                          ]}
-                        >
-                          Done
-                        </Text>
-                      )}
-                      {isActive && (
-                        <Text
-                          style={[
-                            styles.stepStatus,
-                            { color: theme.accentHighlight },
-                          ]}
-                        >
-                          In progress
-                        </Text>
-                      )}
-                    </View>
-                  );
-                })}
               </View>
 
               <Text style={[styles.processingHint, { color: theme.textMuted }]}>
@@ -680,8 +577,7 @@ export default function NoteDetailScreen({ route, navigation }: Props) {
                 Processing failed
               </Text>
               <Text style={[styles.failedSub, { color: theme.textSecondary }]}>
-                {note.error_message ??
-                  "Something went wrong while processing this reel."}
+                Something went wrong while processing this reel.
               </Text>
               <TouchableOpacity
                 style={[styles.retryBtn, { borderColor: theme.error }]}
@@ -1104,26 +1000,29 @@ const styles = StyleSheet.create({
   },
 
   // Processing
+  // Processing
   processingSection: {
-    gap: spacing[5],
-  },
-  statusPill: {
-    flexDirection: "row",
     alignItems: "center",
-    alignSelf: "flex-start",
-    gap: spacing[2],
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2],
-    borderRadius: radius.full,
+    gap: spacing[4],
   },
-  statusDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
+  processingRingWrap: {
+    marginBottom: spacing[2],
   },
-  statusPillText: {
+  processingRing: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 3,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  processingPct: {
+    ...display.subheading,
+    fontWeight: "700",
+  },
+  processingLabel: {
     ...ui.body,
-    fontWeight: "500",
+    textAlign: "center",
   },
   progressTrack: {
     width: "100%",
@@ -1134,50 +1033,6 @@ const styles = StyleSheet.create({
   progressFill: {
     height: "100%",
     borderRadius: radius.full,
-  },
-  progressPct: {
-    ...ui.caption,
-    marginTop: -spacing[3],
-    alignSelf: "flex-end",
-  },
-  stepsCard: {
-    borderRadius: radius.lg,
-    borderWidth: 0.5,
-    overflow: "hidden",
-  },
-  stepRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: spacing[3],
-    paddingHorizontal: spacing[4],
-    gap: spacing[3],
-  },
-  stepIcon: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    borderWidth: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  stepCheck: {
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  stepDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  stepNum: {
-    ...ui.caption,
-    fontWeight: "600",
-  },
-  stepLabel: {
-    ...ui.body,
-  },
-  stepStatus: {
-    ...ui.caption,
   },
   processingHint: {
     ...ui.caption,

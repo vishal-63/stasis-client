@@ -33,12 +33,11 @@ import {
 } from "@expo-google-fonts/inter";
 import { ThemeProvider } from "./theme";
 
-const INSTAGRAM_REEL_REGEX =
-  /https:\/\/(?:www\.)?instagram\.com\/reel\/[\w-]+\/?/;
+const SUPPORTED_URL_REGEX =
+  /https:\/\/(?:(?:www\.|m\.)?instagram\.com\/reel\/[\w-]+\/?|(?:www\.|m\.)?youtube\.com\/shorts\/[\w-]+|youtu\.be\/[\w-]+)/;
 
 type ProcessingState = {
   noteId: string;
-  jobId: string;
 } | null;
 
 function AppContent() {
@@ -66,9 +65,14 @@ function AppContent() {
 
   const handleShare = async (shareIntent: ShareIntent) => {
     if (hasShareIntent && shareIntent.webUrl) {
-      const text = shareIntent.webUrl || shareIntent.text || "";
+      // Strip query params and fragments from the URL
+      const text = (shareIntent.webUrl || shareIntent.text || "")
+        .split("?")[0]
+        .split("#")[0];
 
-      const match = text.match(INSTAGRAM_REEL_REGEX);
+      console.log(text);
+      console.log(shareIntent);
+      const match = text.match(SUPPORTED_URL_REGEX);
       if (!match) {
         Alert.alert(
           "Not a Reel",
@@ -76,10 +80,11 @@ function AppContent() {
         );
         return;
       }
-      const reelUrl = match[0];
+
+      const url = match[0];
 
       if (!user) {
-        pendingShare.set(reelUrl);
+        pendingShare.set(url);
         Alert.alert(
           "Sign in required",
           "Please sign in to save this Reel as a note. Your Reel will be processed automatically after signing in.",
@@ -88,7 +93,7 @@ function AppContent() {
         return;
       }
 
-      await processUrl(reelUrl);
+      await processUrl(url);
     }
   };
 
@@ -152,7 +157,6 @@ function AppContent() {
   if (processing) {
     return (
       <ProcessingScreen
-        jobId={processing.jobId}
         noteId={processing.noteId}
         onComplete={handleProcessingComplete}
         onError={handleProcessingError}
