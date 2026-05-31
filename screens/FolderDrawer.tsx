@@ -267,7 +267,7 @@ export default function FolderDrawer({
                   },
                 ]}
               >
-                Loading…
+                Loading...
               </Text>
             ) : (
               <Text style={styles.emptyText}>
@@ -301,7 +301,7 @@ export default function FolderDrawer({
                   borderColor: theme.borderDefault,
                 },
               ]}
-              placeholder="Folder name…"
+              placeholder="Folder name..."
               placeholderTextColor={theme.textMuted}
               value={newName}
               onChangeText={setNewName}
@@ -330,7 +330,7 @@ export default function FolderDrawer({
                   },
                 ]}
               >
-                {creating ? "…" : "+"}
+                {creating ? "..." : "+"}
               </Text>
             </TouchableOpacity>
           </View>

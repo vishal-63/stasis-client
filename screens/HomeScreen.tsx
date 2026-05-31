@@ -39,9 +39,9 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 const statusLabel = (status: string) =>
   ({
     queued: "Queued",
-    downloading: "Downloading…",
-    transcribing: "Transcribing…",
-    summarising: "Summarising…",
+    downloading: "Downloading...",
+    transcribing: "Transcribing...",
+    extracting: "Extracting...",
     failed: "Failed",
   })[status] ?? status;
 
@@ -100,7 +100,7 @@ function NoteCard({ item, onPress, onLongPress, onMorePress }: NoteCardProps) {
               ]}
               numberOfLines={2}
             >
-              {item.title ?? (isDone ? "Untitled" : "Processing…")}
+              {item.title ?? (isDone ? "Untitled" : "Processing...")}
             </Text>
             <TouchableOpacity
               onPress={onMorePress}
@@ -135,13 +135,13 @@ function NoteCard({ item, onPress, onLongPress, onMorePress }: NoteCardProps) {
             </View>
           )}
 
-          {/* Summary preview */}
-          {isDone && item.summary && (
+          {/* Content preview */}
+          {isDone && item.content && (
             <Text
-              style={[styles.cardSummary, { color: theme.textSecondary }]}
+              style={[styles.cardContentNote, { color: theme.textSecondary }]}
               numberOfLines={2}
             >
-              {item.summary.replace(/[#*_~`\-]/g, "").trim()}
+              {item.content.replace(/[#*_~`\-]/g, "").trim()}
             </Text>
           )}
 
@@ -250,7 +250,7 @@ export default function HomeScreen() {
       notes.filter(
         (n) =>
           (n.title ?? "").toLowerCase().includes(q) ||
-          (n.summary ?? "").toLowerCase().includes(q),
+          (n.content ?? "").toLowerCase().includes(q),
       ),
     );
   }, [notes, debouncedSearchTerm]);
@@ -281,7 +281,7 @@ export default function HomeScreen() {
   const shareNote = async (note: NoteWithFolder) => {
     await Share.share({
       title: note.title ?? "Stasis",
-      message: `${note.title}\n\n${note.summary}\n\nSource: ${note.source_url}`,
+      message: `${note.title}\n\n${note.content}\n\nSource: ${note.source_url}`,
     });
   };
 
@@ -347,7 +347,7 @@ export default function HomeScreen() {
       <Text style={[styles.emptySub, { color: theme.textMuted }]}>
         {search
           ? `No notes matching "${search}"`
-          : "Share an Instagram Reel to save your first note."}
+          : "Share an Instagram Reel or YouTube Short to extract knowledge and build your reference library."}
       </Text>
       {search && (
         <TouchableOpacity
@@ -615,7 +615,7 @@ const styles = StyleSheet.create({
     ...ui.tag,
     fontSize: 11,
   },
-  cardSummary: {
+  cardContentNote: {
     ...ui.secondary,
     fontSize: 13,
     lineHeight: 19,

@@ -14,28 +14,29 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Markdown from "react-native-markdown-display";
+
 import { RootStackParamList } from "../navigation/RootNavigator";
 import { getNoteById, getProcessingJob, subscribeToJob } from "../lib/db";
 // import { getJobStatus } from "../lib/api";
 import { NoteWithFolder, ProcessingJob, NoteStatus } from "../types/database";
 import { useAuth } from "../context/AuthContext";
+import { cleanMarkdownToPlainText, getVideoSource } from "../utils";
+
 import FolderPickerModal from "./FolderPickerModal";
 import { Text } from "../theme/components";
 import { display, ui } from "../theme/typography";
 import { radius, spacing } from "../theme/spacing";
-import { useTheme } from "../theme";
+import { fonts, useTheme } from "../theme";
 
 type Props = NativeStackScreenProps<RootStackParamList, "NoteDetail">;
 
 const STAGE_LABELS: Record<string, string> = {
-  queued: "Waiting in queue…",
-  downloading: "Downloading reel…",
-  transcribing: "Transcribing audio…",
-  summarising: "Generating notes…",
+  queued: "Waiting in queue...",
+  downloading: "Downloading video...",
+  transcribing: "Transcribing audio...",
+  extracting: "Generating notes...",
 };
 
 const STEPS = [
@@ -43,16 +44,6 @@ const STEPS = [
   { label: "Transcribe", doneAt: 70, activeAt: 31 },
   { label: "Generate notes", doneAt: 95, activeAt: 71 },
 ];
-
-const statusColor = (status: NoteStatus, theme: any) =>
-  ({
-    queued: theme.textMuted,
-    downloading: theme.accentHighlight,
-    transcribing: theme.accentHighlight,
-    summarising: theme.accentHighlight,
-    done: theme.success,
-    failed: theme.error,
-  })[status] ?? theme.textMuted;
 
 export default function NoteDetailScreen({ route, navigation }: Props) {
   // const navigation =
@@ -69,7 +60,7 @@ export default function NoteDetailScreen({ route, navigation }: Props) {
   const [jobLoading, setJobLoading] = useState(false);
 
   const isProcessing = note
-    ? ["queued", "downloading", "transcribing", "summarising"].includes(
+    ? ["queued", "downloading", "transcribing", "extracting"].includes(
         note.status,
       )
     : false;
@@ -143,10 +134,10 @@ export default function NoteDetailScreen({ route, navigation }: Props) {
   }, [note?.status]);
 
   const handleShare = async () => {
-    if (!note) return;
+    if (!note || !note.content) return;
     await Share.share({
       title: note.title ?? "Stasis",
-      message: `${note.title}\n\n${note.summary}\n\nSource: ${note.source_url}`,
+      message: `${note.title}\n\n${cleanMarkdownToPlainText(note.content)}\n\nSource: ${note.source_url}`,
     });
   };
 
@@ -412,7 +403,7 @@ export default function NoteDetailScreen({ route, navigation }: Props) {
                   { color: theme.accentSecondary },
                 ]}
               >
-                View on Instagram ↗
+                View on {getVideoSource(note.source_url)} ↗
               </Text>
             </View>
           </TouchableOpacity>
@@ -433,7 +424,7 @@ export default function NoteDetailScreen({ route, navigation }: Props) {
               <Text
                 style={[styles.sourceFallbackLabel, { color: theme.textMuted }]}
               >
-                Original Reel
+                Original URL
               </Text>
               <Text
                 style={[
@@ -457,7 +448,7 @@ export default function NoteDetailScreen({ route, navigation }: Props) {
         <View style={styles.body}>
           {/* Title */}
           <Text style={[styles.title, { color: theme.textPrimary }]}>
-            {note.title ?? (isProcessing ? "Processing…" : "Untitled")}
+            {note.title ?? (isProcessing ? "Processing..." : "Untitled")}
           </Text>
 
           {/* Folder */}
@@ -473,7 +464,6 @@ export default function NoteDetailScreen({ route, navigation }: Props) {
                     },
                   ]}
                   onPress={() => {
-                    console.log(note.folder, note.folder_id);
                     navigation.navigate("Home", {
                       activeFolderId: note.folder!.id,
                     });
@@ -535,7 +525,7 @@ export default function NoteDetailScreen({ route, navigation }: Props) {
               <Text
                 style={[styles.processingLabel, { color: theme.textMuted }]}
               >
-                Processing your note…
+                Processing your note...
               </Text>
 
               {/* Progress bar */}
@@ -577,7 +567,7 @@ export default function NoteDetailScreen({ route, navigation }: Props) {
                 Processing failed
               </Text>
               <Text style={[styles.failedSub, { color: theme.textSecondary }]}>
-                Something went wrong while processing this reel.
+                Something went wrong while processing this video.
               </Text>
               <TouchableOpacity
                 style={[styles.retryBtn, { borderColor: theme.error }]}
@@ -593,8 +583,8 @@ export default function NoteDetailScreen({ route, navigation }: Props) {
           {/* ── Done state ── */}
           {note.status === "done" && (
             <>
-              {/* Summary */}
-              {note.summary ? (
+              {/* Content */}
+              {note.content ? (
                 <View style={styles.section}>
                   <Text
                     style={[
@@ -602,9 +592,9 @@ export default function NoteDetailScreen({ route, navigation }: Props) {
                       { color: theme.accentPrimary },
                     ]}
                   >
-                    Summary
+                    Content
                   </Text>
-                  <Markdown style={mdStyles}>{note.summary}</Markdown>
+                  <Markdown style={mdStyles}>{note.content}</Markdown>
                 </View>
               ) : null}
 
@@ -1019,6 +1009,7 @@ const styles = StyleSheet.create({
   processingPct: {
     ...display.subheading,
     fontWeight: "700",
+    fontFamily: fonts.inter.bold,
   },
   processingLabel: {
     ...ui.body,

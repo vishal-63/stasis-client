@@ -38,7 +38,7 @@ export default function BottomSearchBar({
       <TextInput
         containerStyle={{ flex: 1 }}
         inputStyle={[styles.searchInput, { color: theme.textPrimary }]}
-        placeholder="Search notes…"
+        placeholder="Search notes..."
         placeholderTextColor={theme.textMuted}
         value={value}
         onChangeText={onChangeText}

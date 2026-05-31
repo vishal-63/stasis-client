@@ -5,7 +5,7 @@ export type ProcessReelResult = {
   noteId: string;
 };
 
-export async function processReelUrl(
+export async function extractKnowledgeFromUrl(
   userId: string,
   url: string,
 ): Promise<ProcessReelResult> {
@@ -24,7 +24,7 @@ export async function processReelUrl(
       noteId: note.id,
     };
   } catch (error) {
-    console.error("Error in processReelUrl:", error);
+    console.error("Error in extractKnowledgeFromUrl:", error);
     throw error;
   }
 }

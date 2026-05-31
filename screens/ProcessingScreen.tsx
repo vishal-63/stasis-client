@@ -13,9 +13,9 @@ import { useTheme } from "../theme/ThemeContext";
 import { display, ui } from "../theme/typography";
 import { radius, spacing } from "../theme/spacing";
 import { Text } from "../theme/components";
+import { fonts } from "../theme";
 
 type Props = {
-  jobId: string;
   noteId: string;
   onComplete: (noteId: string) => void;
   onError: (message: string) => void;
@@ -27,6 +27,15 @@ const RING_RADIUS = 58;
 const STROKE_WIDTH = 5;
 const CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
+const STAGE_LABELS: Record<string, string> = {
+  queued: "Preparing...",
+  downloading: "Extracting audio...",
+  transcribing: "Transcribing audio...",
+  extracting: "Structuring knowledge...",
+  done: "Done!",
+  failed: "Failed",
+};
+
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 export default function ProcessingScreen({
@@ -36,8 +45,9 @@ export default function ProcessingScreen({
   onCancel,
 }: Props) {
   const { theme } = useTheme();
-  const [progress, setProgress] = useState(0);
-  const [completed, setCompleted] = useState(false);
+  const [progress, setProgress] = useState<number>(0);
+  const [completed, setCompleted] = useState<boolean>(false);
+  const [stage, setStage] = useState<string>("Preparing...");
 
   const progressAnim = useRef(new Animated.Value(0)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
@@ -56,10 +66,12 @@ export default function ProcessingScreen({
 
   handleUpdateRef.current = (status, _stage, updatedProgress, error) => {
     setProgress(updatedProgress);
+    setStage(_stage ?? STAGE_LABELS[status] ?? "Preparing...");
 
     if (status === "done") {
       setCompleted(true);
       setProgress(100);
+      setStage("Done!");
       setTimeout(() => onComplete(noteId), 900);
     } else if (status === "failed") {
       onError(error ?? "Processing failed. Please try again.");
@@ -264,10 +276,13 @@ export default function ProcessingScreen({
           <Text style={[styles.title, { color: theme.textPrimary }]}>
             {completed ? "Note ready!" : "Processing"}
           </Text>
+          <Text style={[styles.stageLabel, { color: theme.accentPrimary }]}>
+            {stage}
+          </Text>
           <Text style={[styles.sub, { color: theme.textMuted }]}>
             {completed
               ? "Your note has been saved."
-              : "This usually takes 30–60 seconds."}
+              : "This usually takes 30-60 seconds."}
           </Text>
         </View>
 
@@ -330,16 +345,24 @@ const styles = StyleSheet.create({
   },
   pctNumber: {
     ...display.noteTitle,
+    fontFamily: fonts.inter.bold,
     fontSize: 36,
     lineHeight: 40,
   },
   pctSymbol: {
     ...ui.bodyMd,
+    fontFamily: fonts.inter.bold,
     marginBottom: 4,
   },
   checkmark: {
     fontSize: 36,
     fontWeight: "700",
+  },
+  stageLabel: {
+    ...ui.body,
+    fontWeight: "500",
+    textAlign: "center",
+    marginTop: spacing[1],
   },
 
   // Text

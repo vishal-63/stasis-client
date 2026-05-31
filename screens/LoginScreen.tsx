@@ -146,7 +146,7 @@ export default function LoginScreen() {
               Stasis
             </Text>
             <Text variant="muted" style={styles.tagline}>
-              Save insights from any Instagram Reel
+              Extract knowledge from Short-Form content
             </Text>
           </View>
 
@@ -186,7 +186,7 @@ export default function LoginScreen() {
                 />
 
                 <Button
-                  label={loading ? "Sending…" : "Send sign-in code →"}
+                  label={loading ? "Sending..." : "Send sign-in code →"}
                   onPress={sendOtp}
                   disabled={!email || loading}
                   loading={loading}
@@ -250,7 +250,7 @@ export default function LoginScreen() {
                 />
 
                 <Button
-                  label={loading ? "Verifying…" : "Verify code →"}
+                  label={loading ? "Verifying..." : "Verify code →"}
                   onPress={verifyOtp}
                   disabled={code.length !== 6 || loading}
                   loading={loading}

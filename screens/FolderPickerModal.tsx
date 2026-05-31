@@ -259,7 +259,7 @@ export default function FolderPickerModal({
                 borderColor: theme.borderDefault,
               },
             ]}
-            placeholder="New folder name…"
+            placeholder="New folder name..."
             placeholderTextColor={theme.textMuted}
             value={newFolderName}
             onChangeText={setNewFolderName}
@@ -287,7 +287,7 @@ export default function FolderPickerModal({
                 },
               ]}
             >
-              {creating ? "…" : "+ Create"}
+              {creating ? "..." : "+ Create"}
             </Text>
           </TouchableOpacity>
         </View>
@@ -312,7 +312,7 @@ export default function FolderPickerModal({
                 },
               ]}
             >
-              Loading folders…
+              Loading folders...
             </Text>
           </View>
         ) : folders.length === 0 ? (
@@ -343,7 +343,7 @@ export default function FolderPickerModal({
             style={styles.actionBtn}
           />
           <Button
-            label={moving ? "Moving…" : "Move note"}
+            label={moving ? "Moving..." : "Move note"}
             onPress={handleConfirm}
             disabled={!selectedId || moving}
             loading={moving}

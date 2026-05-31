@@ -171,7 +171,7 @@ export const updateNote = async (
     Pick<
       Note,
       | "title"
-      | "summary"
+      | "content"
       | "transcript"
       | "key_points"
       | "action_items"

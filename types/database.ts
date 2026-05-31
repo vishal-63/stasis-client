@@ -2,7 +2,7 @@ export type NoteStatus =
   | "queued"
   | "downloading"
   | "transcribing"
-  | "summarising"
+  | "extracting"
   | "done"
   | "failed";
 
@@ -29,7 +29,7 @@ export type Note = {
   user_id: string;
   folder_id: string | null;
   title: string | null;
-  summary: string | null;
+  content: string | null;
   transcript: string | null;
   key_points: string[];
   action_items: string[];

@@ -1,7 +1,7 @@
 export type Note = {
   id: string;
   title: string;
-  summary: string;
+  content: string;
   source_url: string;
   created_at: string;
   tags: string[];
@@ -14,7 +14,7 @@ export type ProcessingStatus =
   | "idle"
   | "fetching"
   | "transcribing"
-  | "summarizing"
+  | "extracting"
   | "completed"
   | "failed";
 

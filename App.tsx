@@ -12,7 +12,7 @@ import RootNavigator, { RootStackParamList } from "./navigation/RootNavigator";
 import ProcessingScreen from "./screens/ProcessingScreen";
 
 import { AuthProvider, useAuth } from "./context/AuthContext";
-import { processReelUrl } from "./lib/processReel";
+import { extractKnowledgeFromUrl } from "./lib/processReel";
 import { pendingShare } from "./lib/pendingShare";
 
 import {
@@ -53,7 +53,7 @@ function AppContent() {
   const processUrl = async (url: string) => {
     if (!user) return;
     try {
-      const result = await processReelUrl(user.id, url);
+      const result = await extractKnowledgeFromUrl(user.id, url);
       setProcessing(result);
     } catch (e: any) {
       Alert.alert(
@@ -70,13 +70,11 @@ function AppContent() {
         .split("?")[0]
         .split("#")[0];
 
-      console.log(text);
-      console.log(shareIntent);
       const match = text.match(SUPPORTED_URL_REGEX);
       if (!match) {
         Alert.alert(
-          "Not a Reel",
-          "Please share an Instagram Reel URL to create a note.",
+          "Invalid URL",
+          "Please share a valid Instagram Reel or YouTube Shorts URL.",
         );
         return;
       }
@@ -87,7 +85,7 @@ function AppContent() {
         pendingShare.set(url);
         Alert.alert(
           "Sign in required",
-          "Please sign in to save this Reel as a note. Your Reel will be processed automatically after signing in.",
+          "Please sign in to save this Video. We will start processing as soon as you're signed in.",
           [{ text: "OK" }],
         );
         return;
@@ -117,8 +115,8 @@ function AppContent() {
     pendingShare.clear();
 
     Alert.alert(
-      "Processing your Reel",
-      "You're signed in! We're now processing the Reel you shared.",
+      "Processing your Video",
+      "You're signed in! We're now processing the Video you shared.",
       [{ text: "OK" }],
     );
 
