@@ -29,6 +29,8 @@ import { Text } from "../theme/components";
 import { display, ui } from "../theme/typography";
 import { radius, spacing } from "../theme/spacing";
 import { fonts, useTheme } from "../theme";
+import { useNetwork } from "../hooks/useNetwork";
+import { Cache } from "../lib/cache";
 
 type Props = NativeStackScreenProps<RootStackParamList, "NoteDetail">;
 
@@ -52,6 +54,7 @@ export default function NoteDetailScreen({ route, navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { theme } = useTheme();
+  const { isOffline } = useNetwork();
 
   const [note, setNote] = useState<NoteWithFolder | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,16 +74,47 @@ export default function NoteDetailScreen({ route, navigation }: Props) {
   const scrollY = useRef(new Animated.Value(0)).current;
 
   const fetchNote = useCallback(async () => {
+    const cacheKey = `note_${noteId}`;
+    let hasCache = false;
+
     try {
-      setLoading(true);
-      const data = await getNoteById(noteId);
-      setNote(data);
+      // OPTIMISTIC UI: Read from local disk first
+      const cachedNote = await Cache.get<NoteWithFolder>(cacheKey);
+
+      if (cachedNote) {
+        hasCache = true;
+        setNote(cachedNote);
+        setLoading(false);
+        setError(null);
+      } else if (!isOffline) {
+        setLoading(true);
+      }
+      console.log(isOffline);
+      if (isOffline) return;
+
+      // REVALIDATE: Fetch fresh data from Supabase in the background
+      const freshData = await getNoteById(noteId);
+
+      // UPDATE: Refresh the screen and save the new data to disk
+      console.log("Fetching note");
+      if (freshData) {
+        setNote(freshData);
+        await Cache.set(cacheKey, freshData);
+        setError(null);
+      }
     } catch (e: any) {
-      setError(e.message ?? "Failed to load note");
+      console.error("Failed to fetch fresh note:", e);
+
+      // 6. SMART ERROR HANDLING:
+      // Only show a blocking UI error if the user has absolutely no cached data to look at.
+      // If they have the cache, let them keep reading the stale note in peace.
+      if (!hasCache) {
+        setError(e.message ?? "Failed to load note");
+      }
     } finally {
       setLoading(false);
     }
-  }, [noteId]);
+  }, [noteId, isOffline]);
 
   useEffect(() => {
     fetchNote();

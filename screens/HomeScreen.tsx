@@ -32,6 +32,8 @@ import FolderPickerModal from "./FolderPickerModal";
 import { useTheme } from "../theme";
 import BottomSearchBar from "../components/SearchBar";
 import { useDebounce } from "../hooks/useDebounce";
+import { useNetwork } from "../hooks/useNetwork";
+import { Cache } from "../lib/cache";
 
 type SortOption = "newest" | "oldest" | "folder";
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -179,6 +181,7 @@ function NoteCard({ item, onPress, onLongPress, onMorePress }: NoteCardProps) {
 export default function HomeScreen() {
   const { user } = useAuth();
   const { theme } = useTheme();
+  const { isOffline } = useNetwork();
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProp<RootStackParamList, "Home">>();
 
@@ -201,14 +204,48 @@ export default function HomeScreen() {
 
   const fetchNotes = useCallback(
     async (folderId?: string | null) => {
-      const data = await getNotes(user!.id, {
-        folderId:
-          (folderId !== undefined ? folderId : activeFolder) ?? undefined,
-        sort,
-      });
-      setNotes(data);
+      const targetFolder =
+        (folderId !== undefined ? folderId : activeFolder) ?? undefined;
+
+      const cacheKey = `notes_${user!.id}_${targetFolder || "all"}_${sort}`;
+
+      try {
+        // OPTIMISTIC UI: Read from local disk first
+        const cachedData = await Cache.get<NoteWithFolder[]>(cacheKey);
+
+        if (cachedData && Array.isArray(cachedData)) {
+          setNotes(cachedData);
+          setLoading(false); // Kill the loading spinner instantly so the user can read!
+        } else if (!isOffline) {
+          // Only show loading spinner if we have NO cache and ARE online
+          setLoading(true);
+        }
+
+        if (isOffline) {
+          Alert.alert(
+            "Offline Mode",
+            "Please connect to the internet to fetch new notes.",
+            [{ text: "OK" }],
+          );
+          setLoading(false);
+          return;
+        }
+
+        const freshData = await getNotes(user!.id, {
+          folderId: targetFolder,
+          sort,
+        });
+
+        // UPDATE: Refresh the screen and save the new data to disk
+        setNotes(freshData);
+        await Cache.set(cacheKey, freshData);
+      } catch (error) {
+        console.error("Failed to fetch notes:", error);
+      } finally {
+        setLoading(false);
+      }
     },
-    [user, activeFolder, sort],
+    [user, activeFolder, sort, isOffline],
   );
 
   useEffect(() => {
@@ -264,6 +301,12 @@ export default function HomeScreen() {
   // ─── Actions ─────────────────────────────────────────────────────
 
   const deleteNote = async (id: string) => {
+    if (isOffline) {
+      Alert.alert("Offline", "Please connect to the internet to delete note.", [
+        { text: "OK" },
+      ]);
+      return;
+    }
     Alert.alert("Delete note", "This cannot be undone.", [
       { text: "Cancel", style: "cancel" },
       {
@@ -276,6 +319,18 @@ export default function HomeScreen() {
         },
       },
     ]);
+  };
+
+  const moveNoteToFolder = async (note: NoteWithFolder) => {
+    if (isOffline) {
+      Alert.alert(
+        "Offline",
+        "Please connect to the internet to move note to a folder.",
+        [{ text: "OK" }],
+      );
+      return;
+    }
+    setFolderPickerNote(note);
   };
 
   const shareNote = async (note: NoteWithFolder) => {
@@ -295,14 +350,14 @@ export default function HomeScreen() {
         },
         (idx) => {
           if (idx === 1) shareNote(note);
-          if (idx === 2) setFolderPickerNote(note);
+          if (idx === 2) moveNoteToFolder(note);
           if (idx === 3) deleteNote(note.id);
         },
       );
     } else {
       Alert.alert(note.title ?? "Note", undefined, [
         { text: "Share", onPress: () => shareNote(note) },
-        { text: "Move to folder", onPress: () => setFolderPickerNote(note) },
+        { text: "Move to folder", onPress: () => moveNoteToFolder(note) },
         {
           text: "Delete",
           style: "destructive",

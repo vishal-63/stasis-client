@@ -1,7 +1,6 @@
 import { supabase } from "./supabase";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL!;
-const API_SECRET = process.env.EXPO_PUBLIC_API_SECRET!;
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
   const { data } = await supabase.auth.getSession();
@@ -12,7 +11,6 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   return {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
-    "X-API-Secret": API_SECRET,
   };
 }
 

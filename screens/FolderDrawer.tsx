@@ -18,6 +18,8 @@ import { Text } from "../theme/components";
 import { display, lineHeight, ui } from "../theme/typography";
 import { radius, spacing } from "../theme/spacing";
 import { useTheme } from "../theme";
+import { useNetwork } from "../hooks/useNetwork";
+import { Cache } from "../lib/cache";
 
 const DRAWER_WIDTH = Dimensions.get("window").width * 0.72;
 
@@ -38,6 +40,7 @@ export default function FolderDrawer({
 }: Props) {
   const { signOut } = useAuth();
   const { theme } = useTheme();
+  const { isOffline } = useNetwork();
   const insets = useSafeAreaInsets();
   const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -81,18 +84,42 @@ export default function FolderDrawer({
   }, [visible]);
 
   const loadFolders = async () => {
+    const CACHE_KEY = "all_folders";
     setLoading(true);
     try {
-      const data = await getFolders(userId);
-      setFolders(data);
+      const cachedFolders = await Cache.get<Folder[]>(CACHE_KEY);
+      if (cachedFolders && Array.isArray(cachedFolders)) {
+        setFolders(cachedFolders);
+        setLoading(false);
+      }
+
+      if (isOffline) {
+        setLoading(false);
+        return;
+      }
+
+      const freshData = await getFolders(userId);
+      if (freshData) {
+        setFolders(freshData);
+        await Cache.set(CACHE_KEY, freshData);
+      }
     } catch (e: any) {
-      Alert.alert("Error", e.message);
+      Alert.alert("Error", "Could not load folders");
     } finally {
       setLoading(false);
     }
   };
 
   const handleCreate = async () => {
+    if (isOffline) {
+      Alert.alert(
+        "Offline",
+        "Please connect to the internet to create a folder.",
+        [{ text: "OK" }],
+      );
+      return;
+    }
+
     const name = newName.trim();
     if (!name) return;
     setCreating(true);
@@ -108,6 +135,14 @@ export default function FolderDrawer({
   };
 
   const handleDelete = (folder: Folder) => {
+    if (isOffline) {
+      Alert.alert(
+        "Offline",
+        "Please connect to the internet to delete the folder.",
+        [{ text: "OK" }],
+      );
+      return;
+    }
     Alert.alert(
       `Delete "${folder.name}"?`,
       "Notes in this folder will not be deleted.",

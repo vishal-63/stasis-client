@@ -32,6 +32,7 @@ import {
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
 import { ThemeProvider } from "./theme";
+import { useNetwork } from "./hooks/useNetwork";
 
 const SUPPORTED_URL_REGEX =
   /https:\/\/(?:(?:www\.|m\.)?instagram\.com\/reel\/[\w-]+\/?|(?:www\.|m\.)?youtube\.com\/shorts\/[\w-]+|youtu\.be\/[\w-]+)/;
@@ -44,6 +45,7 @@ function AppContent() {
   const navigationRef =
     useRef<NavigationContainerRef<RootStackParamList> | null>(null);
   const { user, session, loading: authLoading } = useAuth();
+  const { isOffline } = useNetwork();
   const [processing, setProcessing] = useState<ProcessingState>(null);
   const [processingPending, setProcessingPending] = useState<boolean>(false);
 
@@ -52,6 +54,14 @@ function AppContent() {
 
   const processUrl = async (url: string) => {
     if (!user) return;
+    if (isOffline) {
+      Alert.alert(
+        "Offline",
+        "Please connect to the internet to create a new note",
+        [{ text: "OK" }],
+      );
+      return;
+    }
     try {
       const result = await extractKnowledgeFromUrl(user.id, url);
       setProcessing(result);

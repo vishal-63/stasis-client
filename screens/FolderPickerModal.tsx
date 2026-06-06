@@ -17,6 +17,8 @@ import { Text, Button } from "../theme/components";
 import { display, ui } from "../theme/typography";
 import { radius, spacing } from "../theme/spacing";
 import { useTheme } from "../theme";
+import { Cache } from "../lib/cache";
+import { useNetwork } from "../hooks/useNetwork";
 
 type Props = {
   visible: boolean;
@@ -36,6 +38,7 @@ export default function FolderPickerModal({
   onMoved,
 }: Props) {
   const { theme } = useTheme();
+  const { isOffline } = useNetwork();
   const insets = useSafeAreaInsets();
   const [folders, setFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(false);
@@ -69,18 +72,41 @@ export default function FolderPickerModal({
   }, [visible]);
 
   const loadFolders = async () => {
+    const CACHE_KEY = "all_folders";
     setLoading(true);
     try {
-      const data = await getFolders(userId);
-      setFolders(data);
+      const cachedFolders = await Cache.get<Folder[]>(CACHE_KEY);
+      if (cachedFolders && Array.isArray(cachedFolders)) {
+        setFolders(cachedFolders);
+        setLoading(false);
+      }
+
+      if (isOffline) {
+        setLoading(false);
+        return;
+      }
+
+      const freshData = await getFolders(userId);
+      if (freshData) {
+        setFolders(freshData);
+        await Cache.set(CACHE_KEY, freshData);
+      }
     } catch (e: any) {
-      Alert.alert("Error", e.message);
+      Alert.alert("Error", "Could not load folders");
     } finally {
       setLoading(false);
     }
   };
 
   const handleCreateFolder = async () => {
+    if (isOffline) {
+      Alert.alert(
+        "Offline",
+        "Please connect to the internet to create a folder.",
+        [{ text: "OK" }],
+      );
+      return;
+    }
     const name = newFolderName.trim();
     if (!name) return;
     setCreating(true);
@@ -97,6 +123,14 @@ export default function FolderPickerModal({
   };
 
   const handleConfirm = async () => {
+    if (isOffline) {
+      Alert.alert(
+        "Offline",
+        "Please connect to the internet to move note to a folder.",
+        [{ text: "OK" }],
+      );
+      return;
+    }
     if (!selectedId) {
       onClose();
       return;
