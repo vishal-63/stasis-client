@@ -25,12 +25,16 @@ import { useAuth } from "../context/AuthContext";
 import { cleanMarkdownToPlainText, getVideoSource } from "../utils";
 
 import FolderPickerModal from "./FolderPickerModal";
-import { Text } from "../theme/components";
+import { Text, TextInput } from "../theme/components";
 import { display, ui } from "../theme/typography";
 import { radius, spacing } from "../theme/spacing";
 import { fonts, useTheme } from "../theme";
 import { useNetwork } from "../hooks/useNetwork";
 import { Cache } from "../lib/cache";
+
+// import { submitNoteFeedback } from "../lib/db";
+import { NoteFeedback } from "../types/database";
+import FeedbackWidget from "../components/FeedbackWidget";
 
 type Props = NativeStackScreenProps<RootStackParamList, "NoteDetail">;
 
@@ -46,6 +50,8 @@ const STEPS = [
   { label: "Transcribe", doneAt: 70, activeAt: 31 },
   { label: "Generate notes", doneAt: 95, activeAt: 71 },
 ];
+
+type FeedbackData = { is_helpful: boolean; explanation: string | null };
 
 export default function NoteDetailScreen({ route, navigation }: Props) {
   // const navigation =
@@ -698,6 +704,11 @@ export default function NoteDetailScreen({ route, navigation }: Props) {
                     ))}
                   </View>
                 </View>
+              )}
+
+              {/* Feedback */}
+              {note.status === "done" && (
+                <FeedbackWidget noteId={note.id} userId={user?.id ?? ""} />
               )}
 
               {/* Source card */}

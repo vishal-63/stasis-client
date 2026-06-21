@@ -5,6 +5,7 @@ import type {
   Folder,
   ProcessingJob,
   Profile,
+  NoteFeedback,
 } from "../types/database";
 
 // ─── Profile ──────────────────────────────────────────────────────────
@@ -214,6 +215,54 @@ export const moveNoteToFolder = async (
     .update({ folder_id: folderId })
     .eq("id", noteId);
   if (error) throw error;
+};
+
+export const removeNoteFromFolder = async (noteId: string): Promise<void> => {
+  const { error } = await supabase
+    .from("notes")
+    .update({ folder_id: null })
+    .eq("id", noteId);
+  if (error) throw error;
+};
+
+// ─── Feedback ───────────────────────────────────────────────────────
+
+export const submitNoteFeedback = async (
+  noteId: string,
+  userId: string,
+  isHelpful: boolean,
+  explanation?: string,
+): Promise<void> => {
+  const { error } = await supabase.from("note_feedback").upsert(
+    {
+      note_id: noteId,
+      user_id: userId,
+      is_helpful: isHelpful,
+      explanation: explanation?.trim() || null,
+    },
+    { onConflict: "note_id, user_id" },
+  );
+
+  if (error) throw error;
+};
+
+export const getNoteFeedback = async (
+  noteId: string,
+  userId: string,
+): Promise<{ is_helpful: boolean; explanation: string | null } | null> => {
+  const { data, error } = await supabase
+    .from("note_feedback")
+    .select("is_helpful, explanation")
+    .eq("note_id", noteId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Error fetching feedback:", error);
+    throw error;
+  }
+
+  return data;
 };
 
 // ─── Processing jobs ──────────────────────────────────────────────────

@@ -19,7 +19,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useRoute, RouteProp, useFocusEffect } from "@react-navigation/native";
 
 import { supabase } from "../lib/supabase";
-import { getNotes } from "../lib/db";
+import { getNotes, removeNoteFromFolder } from "../lib/db";
 import { useAuth } from "../context/AuthContext";
 import { NoteWithFolder } from "../types/database";
 import { RootStackParamList } from "../navigation/RootNavigator";
@@ -34,6 +34,7 @@ import BottomSearchBar from "../components/SearchBar";
 import { useDebounce } from "../hooks/useDebounce";
 import { useNetwork } from "../hooks/useNetwork";
 import { Cache } from "../lib/cache";
+import { toast } from "../components/Toast";
 
 type SortOption = "newest" | "oldest" | "folder";
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -222,18 +223,16 @@ export default function HomeScreen() {
         }
 
         if (isOffline) {
-          Alert.alert(
-            "Offline Mode",
-            "Please connect to the internet to fetch new notes.",
-            [{ text: "OK" }],
-          );
+          toast.error("Offline Mode", {
+            description: "Please connect to the internet to fetch new notes.",
+          });
           setLoading(false);
           return;
         }
 
         const freshData = await getNotes(user!.id, {
           folderId: targetFolder,
-          sort,
+          sort: sort === "folder" ? "newest" : sort, // folder sort is client-side
         });
 
         // UPDATE: Refresh the screen and save the new data to disk
@@ -278,19 +277,25 @@ export default function HomeScreen() {
   // ─── Filter ──────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!search.trim()) {
-      setFiltered(notes);
-      return;
-    }
-    const q = search.toLowerCase();
-    setFiltered(
-      notes.filter(
+    let result = [...notes];
+
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter(
         (n) =>
           (n.title ?? "").toLowerCase().includes(q) ||
           (n.content ?? "").toLowerCase().includes(q),
-      ),
-    );
-  }, [notes, debouncedSearchTerm]);
+      );
+    }
+
+    if (sort === "folder") {
+      result.sort((a, b) =>
+        (a.folder?.name ?? "zzz").localeCompare(b.folder?.name ?? "zzz"),
+      );
+    }
+
+    setFiltered(result);
+  }, [notes, debouncedSearchTerm, sort]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -302,9 +307,9 @@ export default function HomeScreen() {
 
   const deleteNote = async (id: string) => {
     if (isOffline) {
-      Alert.alert("Offline", "Please connect to the internet to delete note.", [
-        { text: "OK" },
-      ]);
+      toast.error("Offline", {
+        description: "Please connect to the internet to delete note.",
+      });
       return;
     }
     Alert.alert("Delete note", "This cannot be undone.", [
@@ -314,7 +319,8 @@ export default function HomeScreen() {
         style: "destructive",
         onPress: async () => {
           const { error } = await supabase.from("notes").delete().eq("id", id);
-          if (error) Alert.alert("Error", error.message);
+          if (error)
+            Alert.alert("Error", "Failed to delete note. Please try again.");
           else setNotes((prev) => prev.filter((n) => n.id !== id));
         },
       },
@@ -323,14 +329,39 @@ export default function HomeScreen() {
 
   const moveNoteToFolder = async (note: NoteWithFolder) => {
     if (isOffline) {
-      Alert.alert(
-        "Offline",
-        "Please connect to the internet to move note to a folder.",
-        [{ text: "OK" }],
-      );
+      toast.error("Offline", {
+        description: "Please connect to the internet to move note to a folder.",
+      });
       return;
     }
+    console.log(note.folder, note.folder_id);
     setFolderPickerNote(note);
+  };
+
+  const removeNoteFromFolderList = async (noteId: string, folderId: string) => {
+    if (isOffline) {
+      toast.error("Offline", {
+        description:
+          "Please connect to the internet to remove note from folder.",
+      });
+      return;
+    }
+    try {
+      await removeNoteFromFolder(noteId);
+      if (activeFolder && activeFolder === folderId) {
+        setNotes((prev) => prev.filter((n) => n.id !== noteId));
+      }
+      setNotes((prev) =>
+        prev.map((n) =>
+          n.id === noteId ? { ...n, folder: null, folder_id: null } : n,
+        ),
+      );
+      setFolderPickerNote(null);
+    } catch (e: any) {
+      toast.error("Error", {
+        description: "Failed to remove note from folder",
+      });
+    }
   };
 
   const shareNote = async (note: NoteWithFolder) => {
@@ -344,20 +375,34 @@ export default function HomeScreen() {
     if (Platform.OS === "ios") {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          options: ["Cancel", "Share", "Move to folder", "Delete"],
+          options: [
+            "Cancel",
+            "Share",
+            note.folder ? "Remove from folder" : "Move to folder",
+            "Delete",
+          ],
           destructiveButtonIndex: 3,
           cancelButtonIndex: 0,
         },
         (idx) => {
           if (idx === 1) shareNote(note);
-          if (idx === 2) moveNoteToFolder(note);
+          if (idx === 2)
+            note.folder
+              ? removeNoteFromFolderList(note.id, note.folder_id!)
+              : moveNoteToFolder(note);
           if (idx === 3) deleteNote(note.id);
         },
       );
     } else {
       Alert.alert(note.title ?? "Note", undefined, [
         { text: "Share", onPress: () => shareNote(note) },
-        { text: "Move to folder", onPress: () => moveNoteToFolder(note) },
+        {
+          text: note.folder ? "Remove from folder" : "Move to folder",
+          onPress: () =>
+            note.folder
+              ? removeNoteFromFolderList(note.id, note.folder_id!)
+              : moveNoteToFolder(note),
+        },
         {
           text: "Delete",
           style: "destructive",

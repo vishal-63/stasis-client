@@ -33,6 +33,7 @@ import {
 } from "@expo-google-fonts/inter";
 import { ThemeProvider } from "./theme";
 import { useNetwork } from "./hooks/useNetwork";
+import { toast, ToastContainer } from "./components/Toast";
 
 const SUPPORTED_URL_REGEX =
   /https:\/\/(?:(?:www\.|m\.)?instagram\.com\/reel\/[\w-]+\/?|(?:www\.|m\.)?youtube\.com\/shorts\/[\w-]+|youtu\.be\/[\w-]+)/;
@@ -55,21 +56,18 @@ function AppContent() {
   const processUrl = async (url: string) => {
     if (!user) return;
     if (isOffline) {
-      Alert.alert(
-        "Offline",
-        "Please connect to the internet to create a new note",
-        [{ text: "OK" }],
-      );
+      toast.error("Offline", {
+        description: "Please connect to the internet to create a new note",
+      });
       return;
     }
     try {
       const result = await extractKnowledgeFromUrl(user.id, url);
       setProcessing(result);
     } catch (e: any) {
-      Alert.alert(
-        "Error in api request",
-        e.message ?? "Failed to start processing. Please try again.",
-      );
+      toast.error("Error in api request", {
+        description: "Failed to start processing. Please try again.",
+      });
     }
   };
 
@@ -96,7 +94,6 @@ function AppContent() {
         Alert.alert(
           "Sign in required",
           "Please sign in to save this Video. We will start processing as soon as you're signed in.",
-          [{ text: "OK" }],
         );
         return;
       }
@@ -199,6 +196,7 @@ export default function App() {
       <ThemeProvider>
         <AuthProvider>
           <AppContent />
+          <ToastContainer />
         </AuthProvider>
       </ThemeProvider>
     </SafeAreaProvider>

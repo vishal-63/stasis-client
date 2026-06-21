@@ -19,6 +19,7 @@ import { radius, spacing } from "../theme/spacing";
 import { useTheme } from "../theme";
 import { Cache } from "../lib/cache";
 import { useNetwork } from "../hooks/useNetwork";
+import { toast } from "../components/Toast";
 
 type Props = {
   visible: boolean;
@@ -100,11 +101,9 @@ export default function FolderPickerModal({
 
   const handleCreateFolder = async () => {
     if (isOffline) {
-      Alert.alert(
-        "Offline",
-        "Please connect to the internet to create a folder.",
-        [{ text: "OK" }],
-      );
+      toast.error("Offline", {
+        description: "Please connect to the internet to create a folder.",
+      });
       return;
     }
     const name = newFolderName.trim();
@@ -116,7 +115,7 @@ export default function FolderPickerModal({
       setNewFolderName("");
       setSelectedId(folder.id);
     } catch (e: any) {
-      Alert.alert("Error", e.message);
+      Alert.alert("Error", "Failed to create folder. Please try again.");
     } finally {
       setCreating(false);
     }
@@ -124,11 +123,9 @@ export default function FolderPickerModal({
 
   const handleConfirm = async () => {
     if (isOffline) {
-      Alert.alert(
-        "Offline",
-        "Please connect to the internet to move note to a folder.",
-        [{ text: "OK" }],
-      );
+      toast.error("Offline", {
+        description: "Please connect to the internet to move note to a folder.",
+      });
       return;
     }
     if (!selectedId) {
@@ -142,7 +139,7 @@ export default function FolderPickerModal({
       onMoved(folder);
       onClose();
     } catch (e: any) {
-      Alert.alert("Error", e.message);
+      Alert.alert("Error", "Failed to move note. Please try again.");
     } finally {
       setMoving(false);
     }

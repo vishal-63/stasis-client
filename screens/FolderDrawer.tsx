@@ -14,12 +14,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../context/AuthContext";
 import { Folder } from "../types/database";
 import { createFolder, deleteFolder, getFolders } from "../lib/db";
-import { Text } from "../theme/components";
+import { Button, Text } from "../theme/components";
 import { display, lineHeight, ui } from "../theme/typography";
 import { radius, spacing } from "../theme/spacing";
 import { useTheme } from "../theme";
 import { useNetwork } from "../hooks/useNetwork";
 import { Cache } from "../lib/cache";
+import { toast } from "../components/Toast";
 
 const DRAWER_WIDTH = Dimensions.get("window").width * 0.72;
 
@@ -104,7 +105,9 @@ export default function FolderDrawer({
         await Cache.set(CACHE_KEY, freshData);
       }
     } catch (e: any) {
-      Alert.alert("Error", "Could not load folders");
+      toast.error("Error", {
+        description: "Could not load folders",
+      });
     } finally {
       setLoading(false);
     }
@@ -112,11 +115,9 @@ export default function FolderDrawer({
 
   const handleCreate = async () => {
     if (isOffline) {
-      Alert.alert(
-        "Offline",
-        "Please connect to the internet to create a folder.",
-        [{ text: "OK" }],
-      );
+      toast.error("Offline", {
+        description: "Please connect to the internet to create a folder.",
+      });
       return;
     }
 
@@ -128,7 +129,9 @@ export default function FolderDrawer({
       setFolders((prev) => [...prev, folder]);
       setNewName("");
     } catch (e: any) {
-      Alert.alert("Error", e.message);
+      toast.error("Error", {
+        description: e.message,
+      });
     } finally {
       setCreating(false);
     }
@@ -136,11 +139,9 @@ export default function FolderDrawer({
 
   const handleDelete = (folder: Folder) => {
     if (isOffline) {
-      Alert.alert(
-        "Offline",
-        "Please connect to the internet to delete the folder.",
-        [{ text: "OK" }],
-      );
+      toast.error("Offline", {
+        description: "Please connect to the internet to delete the folder.",
+      });
       return;
     }
     Alert.alert(
@@ -157,7 +158,9 @@ export default function FolderDrawer({
               setFolders((prev) => prev.filter((f) => f.id !== folder.id));
               if (activeFolder === folder.id) onSelectFolder(null);
             } catch (e: any) {
-              Alert.alert("Error", e.message);
+              toast.error("Error", {
+                description: e.message,
+              });
             }
           },
         },
@@ -341,10 +344,16 @@ export default function FolderDrawer({
               value={newName}
               onChangeText={setNewName}
               returnKeyType="done"
-              onSubmitEditing={handleCreate}
               maxLength={50}
             />
-            <TouchableOpacity
+            <Button
+              label={creating ? "..." : "+"}
+              variant="primary"
+              style={{ width: 40, height: 40 }}
+              disabled={!newName.trim() || creating || isOffline}
+              onPress={handleCreate}
+            />
+            {/* <TouchableOpacity
               style={[
                 styles.createBtn,
                 {
@@ -355,7 +364,7 @@ export default function FolderDrawer({
                 },
               ]}
               onPress={handleCreate}
-              disabled={!newName.trim() || creating}
+              disabled={!newName.trim() || creating || isOffline}
             >
               <Text
                 style={[
@@ -367,7 +376,7 @@ export default function FolderDrawer({
               >
                 {creating ? "..." : "+"}
               </Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
         </View>
 
