@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  Dispatch,
+  SetStateAction,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import {
   ActionSheetIOS,
   ActivityIndicator,
@@ -9,7 +15,6 @@ import {
   RefreshControl,
   Share,
   StyleSheet,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -25,7 +30,7 @@ import { NoteWithFolder } from "../types/database";
 import { RootStackParamList } from "../navigation/RootNavigator";
 import { display, fontSize, ui } from "../theme/typography";
 import { radius, spacing } from "../theme/spacing";
-import { Text, Badge } from "../theme/components";
+import { Text } from "../theme/components";
 
 import FolderDrawer from "./FolderDrawer";
 import FolderPickerModal from "./FolderPickerModal";
@@ -35,9 +40,15 @@ import { useDebounce } from "../hooks/useDebounce";
 import { useNetwork } from "../hooks/useNetwork";
 import { Cache } from "../lib/cache";
 import { toast } from "../components/Toast";
+import { NativeComponent } from "../components/NativeFeedAd";
+
+import { useRemoteConfig } from "../context/RemoteConfigContext";
 
 type SortOption = "newest" | "oldest" | "folder";
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+type FeedItem =
+  | { type: "note"; data: NoteWithFolder }
+  | { type: "ad"; id: string };
 
 const statusLabel = (status: string) =>
   ({
@@ -54,6 +65,40 @@ const formatDate = (iso: string) =>
     day: "numeric",
     year: "numeric",
   });
+
+const AD_INTERVAL = 5;
+
+const injectAdsIntoFeed = (notes: NoteWithFolder[]): FeedItem[] => {
+  const feed: FeedItem[] = [];
+
+  notes.forEach((note, index) => {
+    feed.push({ type: "note", data: note });
+
+    // After every 5th note, push an Ad block (ensure we don't end the list on an ad)
+    if ((index + 1) % AD_INTERVAL === 0 && index !== notes.length - 1) {
+      feed.push({ type: "ad", id: `ad-slot-after-${note.id}` });
+    }
+  });
+
+  return feed;
+};
+
+const prepareFeedData = (
+  notes: NoteWithFolder[],
+  adsEnabled: boolean,
+  setFeedData: Dispatch<SetStateAction<FeedItem[]>>,
+) => {
+  if (adsEnabled) {
+    const mixedFeed: FeedItem[] = injectAdsIntoFeed(notes);
+    setFeedData(mixedFeed);
+  } else {
+    const feedData: FeedItem[] = notes.map((note) => ({
+      type: "note",
+      data: note,
+    }));
+    setFeedData(feedData);
+  }
+};
 
 // ─── Note card ────────────────────────────────────────────────────────
 
@@ -183,10 +228,12 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const { theme } = useTheme();
   const { isOffline } = useNetwork();
+  const { nativeAdsEnabled } = useRemoteConfig();
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProp<RootStackParamList, "Home">>();
 
   const [notes, setNotes] = useState<NoteWithFolder[]>([]);
+  const [feedData, setFeedData] = useState<FeedItem[]>([]);
   const [filtered, setFiltered] = useState<NoteWithFolder[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -216,6 +263,7 @@ export default function HomeScreen() {
 
         if (cachedData && Array.isArray(cachedData)) {
           setNotes(cachedData);
+          setFiltered(cachedData);
           setLoading(false); // Kill the loading spinner instantly so the user can read!
         } else if (!isOffline) {
           // Only show loading spinner if we have NO cache and ARE online
@@ -237,6 +285,7 @@ export default function HomeScreen() {
 
         // UPDATE: Refresh the screen and save the new data to disk
         setNotes(freshData);
+        setFiltered(freshData);
         await Cache.set(cacheKey, freshData);
       } catch (error) {
         console.error("Failed to fetch notes:", error);
@@ -269,12 +318,11 @@ export default function HomeScreen() {
     }
   }, []);
 
-  useEffect(
-    () => console.log("activeFolder changed", activeFolder),
-    [activeFolder],
-  );
-
   // ─── Filter ──────────────────────────────────────────────────────
+
+  useEffect(() => {
+    prepareFeedData(filtered, nativeAdsEnabled, setFeedData);
+  }, [filtered]);
 
   useEffect(() => {
     let result = [...notes];
@@ -334,7 +382,7 @@ export default function HomeScreen() {
       });
       return;
     }
-    console.log(note.folder, note.folder_id);
+
     setFolderPickerNote(note);
   };
 
@@ -464,6 +512,24 @@ export default function HomeScreen() {
 
   // ─── Render ──────────────────────────────────────────────────────
 
+  function renderFeedItem({ item }: { item: FeedItem }) {
+    if (item.type === "ad") {
+      return <NativeComponent />;
+    }
+
+    // Otherwise, it's a standard note
+    return (
+      <NoteCard
+        item={item.data}
+        onPress={() =>
+          navigation.navigate("NoteDetail", { noteId: item.data.id })
+        }
+        onLongPress={() => showNoteActions(item.data)}
+        onMorePress={() => showNoteActions(item.data)}
+      />
+    );
+  }
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.appBg }]}
@@ -535,18 +601,19 @@ export default function HomeScreen() {
         </View>
       ) : (
         <FlatList
-          data={filtered}
-          keyExtractor={(n) => n.id}
-          renderItem={({ item }) => (
-            <NoteCard
-              item={item}
-              onPress={() =>
-                navigation.navigate("NoteDetail", { noteId: item.id })
-              }
-              onLongPress={() => showNoteActions(item)}
-              onMorePress={() => showNoteActions(item)}
-            />
-          )}
+          data={feedData}
+          keyExtractor={(item) => (item.type === "ad" ? item.id : item.data.id)}
+          // renderItem={({ item }) => (
+          //   <NoteCard
+          //     item={item}
+          //     onPress={() =>
+          //       navigation.navigate("NoteDetail", { noteId: item.id })
+          //     }
+          //     onLongPress={() => showNoteActions(item)}
+          //     onMorePress={() => showNoteActions(item)}
+          //   />
+          // )}
+          renderItem={renderFeedItem}
           ListEmptyComponent={renderEmpty}
           contentContainerStyle={styles.list}
           refreshControl={
@@ -680,7 +747,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
   },
   thumbnail: {
-    width: 90,
+    width: 120,
     height: "100%",
     minHeight: 90,
   },

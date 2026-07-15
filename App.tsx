@@ -34,12 +34,25 @@ import {
 import { ThemeProvider } from "./theme";
 import { useNetwork } from "./hooks/useNetwork";
 import { toast, ToastContainer } from "./components/Toast";
+import {
+  RemoteConfigProvider,
+  useRemoteConfig,
+} from "./context/RemoteConfigContext";
+import MaintenanceScreen from "./screens/MaintenanceScreen";
+import {
+  checkAdFreeWindow,
+  preloadAd,
+  unlockNoteInAdFreeWindow,
+} from "./lib/adManager";
+import { submitMockReelForProcessing } from "./lib/mockApi";
 
 const SUPPORTED_URL_REGEX =
   /https:\/\/(?:(?:www\.|m\.)?instagram\.com\/reel\/[\w-]+\/?|(?:www\.|m\.)?youtube\.com\/shorts\/[\w-]+|youtu\.be\/[\w-]+)/;
 
 type ProcessingState = {
   noteId: string;
+  adFreeWindow: boolean;
+  showAd: boolean;
 } | null;
 
 function AppContent() {
@@ -49,6 +62,9 @@ function AppContent() {
   const { isOffline } = useNetwork();
   const [processing, setProcessing] = useState<ProcessingState>(null);
   const [processingPending, setProcessingPending] = useState<boolean>(false);
+
+  const { maintenanceMode, rewardedAdsEnabled, adFreeWindowMs } =
+    useRemoteConfig();
 
   const { hasShareIntent, shareIntent, resetShareIntent, error } =
     useShareIntent();
@@ -61,9 +77,27 @@ function AppContent() {
       });
       return;
     }
+
+    const inAdFreeWindow = rewardedAdsEnabled
+      ? await checkAdFreeWindow(user.id, adFreeWindowMs)
+      : true;
+
     try {
-      const result = await extractKnowledgeFromUrl(user.id, url);
-      setProcessing(result);
+      let result;
+      if (__DEV__) {
+        result = await submitMockReelForProcessing(user.id, url);
+      } else {
+        result = await extractKnowledgeFromUrl(user.id, url);
+      }
+
+      if (inAdFreeWindow) {
+        await unlockNoteInAdFreeWindow(result.noteId);
+      }
+      setProcessing({
+        noteId: result.noteId,
+        adFreeWindow: rewardedAdsEnabled && inAdFreeWindow,
+        showAd: rewardedAdsEnabled,
+      });
     } catch (e: any) {
       toast.error("Error in api request", {
         description: "Failed to start processing. Please try again.",
@@ -72,6 +106,8 @@ function AppContent() {
   };
 
   const handleShare = async (shareIntent: ShareIntent) => {
+    if (maintenanceMode) return;
+
     if (hasShareIntent && shareIntent.webUrl) {
       // Strip query params and fragments from the URL
       const text = (shareIntent.webUrl || shareIntent.text || "")
@@ -132,9 +168,9 @@ function AppContent() {
 
   const handleProcessingComplete = (noteId: string) => {
     setProcessing(null);
-    // NavigationContainer handles the rest — we push NoteDetail
-    // Use a ref to the navigation to push from outside the navigator
     navigationRef.current?.navigate("NoteDetail", { noteId });
+
+    if (rewardedAdsEnabled) preloadAd();
   };
 
   const handleProcessingError = (message: string) => {
@@ -148,6 +184,8 @@ function AppContent() {
 
   // Ping backend every 10 minutes to prevent cold starts
   useEffect(() => {
+    if (rewardedAdsEnabled) preloadAd();
+
     const keepAlive = async () => {
       try {
         await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/health`);
@@ -159,10 +197,18 @@ function AppContent() {
     return () => clearInterval(interval);
   }, []);
 
+  // Maintenance mode gate in App.tsx
+  if (maintenanceMode) {
+    return <MaintenanceScreen />;
+  }
+
   if (processing) {
     return (
       <ProcessingScreen
         noteId={processing.noteId}
+        userId={user!.id}
+        rewardedAdsEnabled={rewardedAdsEnabled}
+        adFreeWindow={processing.adFreeWindow}
         onComplete={handleProcessingComplete}
         onError={handleProcessingError}
         onCancel={handleCancel}
@@ -195,8 +241,10 @@ export default function App() {
     <SafeAreaProvider>
       <ThemeProvider>
         <AuthProvider>
-          <AppContent />
-          <ToastContainer />
+          <RemoteConfigProvider>
+            <AppContent />
+            <ToastContainer />
+          </RemoteConfigProvider>
         </AuthProvider>
       </ThemeProvider>
     </SafeAreaProvider>

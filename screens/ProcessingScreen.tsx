@@ -14,9 +14,18 @@ import { display, ui } from "../theme/typography";
 import { radius, spacing } from "../theme/spacing";
 import { Text } from "../theme/components";
 import { fonts } from "../theme";
+import {
+  recordAdWatched,
+  showRewardedAd,
+  unlockNoteInAdFreeWindow,
+} from "../lib/adManager";
+import { toast } from "../components/Toast";
 
 type Props = {
   noteId: string;
+  userId: string;
+  rewardedAdsEnabled: boolean;
+  adFreeWindow: boolean;
   onComplete: (noteId: string) => void;
   onError: (message: string) => void;
   onCancel: () => void;
@@ -38,8 +47,16 @@ const STAGE_LABELS: Record<string, string> = {
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
+type Phase =
+  | "showing_ad" // ad is playing
+  | "waiting" // ad done, processing still running
+  | "done"; // both complete
+
 export default function ProcessingScreen({
   noteId,
+  userId,
+  rewardedAdsEnabled,
+  adFreeWindow,
   onComplete,
   onError,
   onCancel,
@@ -48,6 +65,12 @@ export default function ProcessingScreen({
   const [progress, setProgress] = useState<number>(0);
   const [completed, setCompleted] = useState<boolean>(false);
   const [stage, setStage] = useState<string>("Preparing...");
+  const [phase, setPhase] = useState<Phase>(
+    rewardedAdsEnabled ? "showing_ad" : "waiting",
+  );
+  const [adWatched, setAdWatched] = useState(
+    rewardedAdsEnabled && adFreeWindow,
+  );
 
   const progressAnim = useRef(new Animated.Value(0)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
@@ -173,6 +196,72 @@ export default function ProcessingScreen({
     };
   }, [noteId]);
 
+  useEffect(() => {
+    if (rewardedAdsEnabled) {
+      if (adFreeWindow) {
+        handleAdFreeWindow();
+      } else {
+        showAd();
+      }
+    }
+  }, []);
+
+  const handleAdFreeWindow = async () => {
+    // In ad-free window — unlock immediately and wait for processing
+    try {
+      await unlockNoteInAdFreeWindow(noteId);
+      setAdWatched(true);
+      setPhase(progress === 100 ? "done" : "waiting");
+    } catch (e: any) {
+      toast.error("Failed to unlock note");
+    }
+  };
+
+  const showAd = async () => {
+    setPhase("showing_ad");
+    const result = await showRewardedAd();
+
+    if (result.watched) {
+      // Full ad watched — unlock the note
+      try {
+        await recordAdWatched(userId, noteId);
+        setAdWatched(true);
+        toast.success("Note unlocked!", {
+          description: "Ad-free for the next 30 minutes.",
+        });
+      } catch (e: any) {
+        toast.error("Failed to unlock note");
+        onError("Failed to unlock note after ad.");
+        return;
+      }
+    } else if (result.reason === "not_loaded") {
+      // Ad not ready — unlock anyway (don't punish user for AdMob failure)
+      toast.info("Ad unavailable — note unlocked.");
+      await unlockNoteInAdFreeWindow(noteId);
+      setAdWatched(true);
+    } else {
+      // User dismissed the ad — note stays locked
+      toast.warning("Watch the full ad to unlock your note.");
+      onCancel();
+      return;
+    }
+
+    // Ad done — check if processing also done
+    if (progress === 100) {
+      setPhase("done");
+      setTimeout(() => onComplete(noteId), 600);
+    } else {
+      setPhase("waiting");
+    }
+  };
+
+  // When both ad and processing complete — navigate
+  useEffect(() => {
+    if (adWatched && progress === 100) {
+      setTimeout(() => onComplete(noteId), 600);
+    }
+  }, [adWatched]);
+
   const spinDegree = rotateAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ["0deg", "360deg"],
@@ -184,6 +273,24 @@ export default function ProcessingScreen({
   });
 
   const pct = Math.round(progress);
+
+  const phaseContent = {
+    showing_ad: {
+      icon: "🎬",
+      title: "Watch to unlock",
+      sub: "A short ad is playing.\nYour note is being prepared in the background.",
+    },
+    waiting: {
+      icon: "⚡",
+      title: "Almost ready",
+      sub: "Ad complete! Finishing up your note…",
+    },
+    done: {
+      icon: "✓",
+      title: "Note ready!",
+      sub: "Redirecting you now…",
+    },
+  }[phase];
 
   return (
     <SafeAreaView

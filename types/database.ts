@@ -13,6 +13,7 @@ export type Profile = {
   avatar_url: string | null;
   created_at: string;
   updated_at: string;
+  last_ad_watched_at: string | null;
 };
 
 export type Folder = {
@@ -41,6 +42,8 @@ export type Note = {
   share_token: string;
   created_at: string;
   updated_at: string;
+  is_locked: boolean;
+  ad_watched_at: string | null;
 };
 
 export type NoteFeedback = {

@@ -194,6 +194,16 @@ export const updateNote = async (
   return data;
 };
 
+export const isNoteLocked = async (noteId: string): Promise<boolean> => {
+  const { data, error } = await supabase
+    .from("notes")
+    .select("is_locked")
+    .eq("id", noteId)
+    .single();
+  if (error) throw error;
+  return data?.is_locked ?? true;
+};
+
 export const deleteNote = async (noteId: string): Promise<void> => {
   const { error } = await supabase.from("notes").delete().eq("id", noteId);
   if (error) throw error;

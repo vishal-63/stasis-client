@@ -23,7 +23,17 @@
         }
       ]
     },
-    "plugins": ["expo-share-intent"],
+    "plugins": [
+      "expo-share-intent",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-6180028035971404~9839816245",
+          "iosAppId": "ca-app-pub-6180028035971404~1497302115",
+          "userTrackingPermission": "Stasis needs your permission to track your activity across apps and websites to deliver personalized sponsor videos."
+        }
+      ]
+    ],
     "owner": "shahvishal662",
     "extra": {
       "eas": {

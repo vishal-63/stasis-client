@@ -35,6 +35,13 @@ import { Cache } from "../lib/cache";
 // import { submitNoteFeedback } from "../lib/db";
 import { NoteFeedback } from "../types/database";
 import FeedbackWidget from "../components/FeedbackWidget";
+import {
+  recordAdWatched,
+  showRewardedAd,
+  unlockNoteWhenErrorInAd,
+} from "../lib/adManager";
+import { toast } from "../components/Toast";
+import { useRemoteConfig } from "../context/RemoteConfigContext";
 
 type Props = NativeStackScreenProps<RootStackParamList, "NoteDetail">;
 
@@ -61,6 +68,7 @@ export default function NoteDetailScreen({ route, navigation }: Props) {
   const { user } = useAuth();
   const { theme } = useTheme();
   const { isOffline } = useNetwork();
+  const { rewardedAdsEnabled } = useRemoteConfig();
 
   const [note, setNote] = useState<NoteWithFolder | null>(null);
   const [loading, setLoading] = useState(true);
@@ -95,14 +103,14 @@ export default function NoteDetailScreen({ route, navigation }: Props) {
       } else if (!isOffline) {
         setLoading(true);
       }
-      console.log(isOffline);
+
       if (isOffline) return;
 
       // REVALIDATE: Fetch fresh data from Supabase in the background
       const freshData = await getNoteById(noteId);
 
       // UPDATE: Refresh the screen and save the new data to disk
-      console.log("Fetching note");
+
       if (freshData) {
         setNote(freshData);
         await Cache.set(cacheKey, freshData);
@@ -335,6 +343,73 @@ export default function NoteDetailScreen({ route, navigation }: Props) {
       textDecorationLine: "underline" as const,
     },
   };
+
+  // After loading, check if note is locked
+  if (rewardedAdsEnabled && note?.is_locked) {
+    return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.appBg }]}
+        edges={["top"]}
+      >
+        {/* Header */}
+        <Animated.View
+          style={[
+            styles.header,
+            { backgroundColor: theme.base, top: insets.top },
+          ]}
+        >
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.headerBtn}
+          >
+            <Text
+              style={[styles.headerBtnText, { color: theme.accentPrimary }]}
+            >
+              ← Back
+            </Text>
+          </TouchableOpacity>
+        </Animated.View>
+
+        {/* Locked state */}
+        <View style={styles.center}>
+          <View style={[styles.lockedIcon, { backgroundColor: theme.overlay }]}>
+            <Text style={styles.lockedEmoji}>🔒</Text>
+          </View>
+          <Text style={[styles.lockedTitle, { color: theme.textPrimary }]}>
+            Note is locked
+          </Text>
+          <Text style={[styles.lockedSub, { color: theme.textMuted }]}>
+            Watch a short ad to unlock this note.
+          </Text>
+          <TouchableOpacity
+            style={[styles.lockedBtn, { backgroundColor: theme.accentPrimary }]}
+            onPress={async () => {
+              const result = await showRewardedAd();
+              if (result.watched) {
+                await recordAdWatched(user!.id, noteId);
+                toast.success("Note unlocked!");
+                fetchNote();
+              } else if (
+                result.reason === "not_loaded" ||
+                result.reason === "error"
+              ) {
+                await unlockNoteWhenErrorInAd(user!.id, noteId);
+                toast.warning("Error while loading ad");
+                toast.success("Note unlocked!");
+                fetchNote();
+              } else {
+                toast.warning("Watch the full ad to unlock.");
+              }
+            }}
+          >
+            <Text style={[styles.lockedBtnText, { color: theme.textInverse }]}>
+              Watch ad to unlock
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   // ─── Render ───────────────────────────────────────────────────────
   return (
@@ -1102,5 +1177,35 @@ const styles = StyleSheet.create({
   retryBtnText: {
     ...ui.body,
     fontWeight: "500",
+  },
+
+  lockedIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: radius.full,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: spacing[4],
+  },
+  lockedEmoji: { fontSize: 36, lineHeight: 80 },
+  lockedTitle: {
+    ...display.subheading,
+    marginBottom: spacing[2],
+    textAlign: "center",
+  },
+  lockedSub: {
+    ...ui.secondary,
+    textAlign: "center",
+    lineHeight: 22,
+    marginBottom: spacing[6],
+  },
+  lockedBtn: {
+    paddingVertical: spacing[4],
+    paddingHorizontal: spacing[8],
+    borderRadius: radius.md,
+  },
+  lockedBtnText: {
+    ...ui.body,
+    fontWeight: "600",
   },
 });
