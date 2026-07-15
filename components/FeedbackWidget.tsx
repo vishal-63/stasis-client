@@ -16,6 +16,7 @@ import { useNetwork } from "../hooks/useNetwork";
 import { Cache } from "../lib/cache";
 import { getNoteFeedback, submitNoteFeedback } from "../lib/db";
 import { toast } from "./Toast";
+import { posthog } from "../lib/posthog";
 
 type FeedbackModalProps = {
   visible: boolean;
@@ -164,6 +165,12 @@ export default function FeedbackWidget({
     try {
       const isHelpful = rating === "helpful";
       await submitNoteFeedback(noteId, userId, isHelpful, explanation);
+
+      posthog.capture("note_feedback_submitted", {
+        note_id: noteId,
+        is_helpful: isHelpful,
+        has_explanation: explanation.length > 0,
+      });
 
       // Update local cache so it persists offline immediately
       await Cache.set(cacheKey, { is_helpful: isHelpful, explanation });

@@ -9,6 +9,7 @@ import { Session, User } from "@supabase/supabase-js";
 import * as WebBrowser from "expo-web-browser";
 import * as AppleAuthentication from "expo-apple-authentication";
 import { supabase } from "../lib/supabase";
+import { posthog } from "../lib/posthog";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -41,6 +42,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      if (session?.user) {
+        posthog.identify(session.user.id, {
+          $set: { email: session.user.email ?? null },
+          $set_once: { first_sign_in_date: session.user.created_at },
+        });
+      }
     });
 
     return () => {
@@ -107,6 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
+    posthog.reset();
   };
 
   return (

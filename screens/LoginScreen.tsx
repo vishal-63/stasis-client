@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
+import { posthog } from "../lib/posthog";
 import { Text, Button, TextInput } from "../theme/components";
 import { display, lineHeight, ui } from "../theme/typography";
 import { radius, spacing } from "../theme/spacing";
@@ -58,6 +59,7 @@ export default function LoginScreen() {
         options: { shouldCreateUser: true },
       });
       if (error) throw error;
+      posthog.capture("sign_in_otp_requested");
       transitionTo("enter_code");
       startCooldown();
     } catch (e: any) {

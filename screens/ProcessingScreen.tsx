@@ -20,6 +20,7 @@ import {
   unlockNoteInAdFreeWindow,
 } from "../lib/adManager";
 import { toast } from "../components/Toast";
+import { posthog } from "../lib/posthog";
 
 type Props = {
   noteId: string;
@@ -92,11 +93,13 @@ export default function ProcessingScreen({
     setStage(_stage ?? STAGE_LABELS[status] ?? "Preparing...");
 
     if (status === "done") {
+      posthog.capture("note_processing_completed", { note_id: noteId });
       setCompleted(true);
       setProgress(100);
       setStage("Done!");
       setTimeout(() => onComplete(noteId), 900);
     } else if (status === "failed") {
+      posthog.capture("note_processing_failed", { note_id: noteId, error_message: error ?? null });
       onError(error ?? "Processing failed. Please try again.");
     }
   };
@@ -225,6 +228,7 @@ export default function ProcessingScreen({
       // Full ad watched — unlock the note
       try {
         await recordAdWatched(userId, noteId);
+        posthog.capture("rewarded_ad_watched", { note_id: noteId });
         setAdWatched(true);
         toast.success("Note unlocked!", {
           description: "Ad-free for the next 30 minutes.",
@@ -241,6 +245,7 @@ export default function ProcessingScreen({
       setAdWatched(true);
     } else {
       // User dismissed the ad — note stays locked
+      posthog.capture("rewarded_ad_dismissed", { note_id: noteId });
       toast.warning("Watch the full ad to unlock your note.");
       onCancel();
       return;
