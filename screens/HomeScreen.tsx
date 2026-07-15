@@ -43,6 +43,7 @@ import { toast } from "../components/Toast";
 import { NativeComponent } from "../components/NativeFeedAd";
 
 import { useRemoteConfig } from "../context/RemoteConfigContext";
+import { posthog } from "../lib/posthog";
 
 type SortOption = "newest" | "oldest" | "folder";
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -369,7 +370,10 @@ export default function HomeScreen() {
           const { error } = await supabase.from("notes").delete().eq("id", id);
           if (error)
             Alert.alert("Error", "Failed to delete note. Please try again.");
-          else setNotes((prev) => prev.filter((n) => n.id !== id));
+          else {
+            posthog.capture("note_deleted", { note_id: id });
+            setNotes((prev) => prev.filter((n) => n.id !== id));
+          }
         },
       },
     ]);
@@ -521,9 +525,10 @@ export default function HomeScreen() {
     return (
       <NoteCard
         item={item.data}
-        onPress={() =>
-          navigation.navigate("NoteDetail", { noteId: item.data.id })
-        }
+        onPress={() => {
+          posthog.capture("note_opened", { note_id: item.data.id, note_status: item.data.status });
+          navigation.navigate("NoteDetail", { noteId: item.data.id });
+        }}
         onLongPress={() => showNoteActions(item.data)}
         onMorePress={() => showNoteActions(item.data)}
       />

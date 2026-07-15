@@ -10,6 +10,8 @@ import { NavigationContainerRef } from "@react-navigation/native";
 
 import RootNavigator, { RootStackParamList } from "./navigation/RootNavigator";
 import ProcessingScreen from "./screens/ProcessingScreen";
+import { PostHogProvider } from "posthog-react-native";
+import { posthog } from "./lib/posthog";
 
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { extractKnowledgeFromUrl } from "./lib/processReel";
@@ -90,6 +92,7 @@ function AppContent() {
         result = await extractKnowledgeFromUrl(user.id, url);
       }
 
+      posthog.capture("reel_submitted", { source_url: url, in_ad_free_window: inAdFreeWindow });
       if (inAdFreeWindow) {
         await unlockNoteInAdFreeWindow(result.noteId);
       }
@@ -99,6 +102,7 @@ function AppContent() {
         showAd: rewardedAdsEnabled,
       });
     } catch (e: any) {
+      posthog.captureException(e, { context: "reel_submitted" });
       toast.error("Error in api request", {
         description: "Failed to start processing. Please try again.",
       });
@@ -238,15 +242,25 @@ export default function App() {
   }
 
   return (
-    <SafeAreaProvider>
-      <ThemeProvider>
-        <AuthProvider>
-          <RemoteConfigProvider>
-            <AppContent />
-            <ToastContainer />
-          </RemoteConfigProvider>
-        </AuthProvider>
-      </ThemeProvider>
-    </SafeAreaProvider>
+    <PostHogProvider
+      client={posthog}
+      autocapture={{
+        captureScreens: false,
+        captureTouches: true,
+        propsToCapture: ["testID"],
+        maxElementsCaptured: 20,
+      }}
+    >
+      <SafeAreaProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <RemoteConfigProvider>
+              <AppContent />
+              <ToastContainer />
+            </RemoteConfigProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </SafeAreaProvider>
+    </PostHogProvider>
   );
 }

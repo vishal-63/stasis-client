@@ -20,6 +20,7 @@ import { useTheme } from "../theme";
 import { Cache } from "../lib/cache";
 import { useNetwork } from "../hooks/useNetwork";
 import { toast } from "../components/Toast";
+import { posthog } from "../lib/posthog";
 
 type Props = {
   visible: boolean;
@@ -136,6 +137,7 @@ export default function FolderPickerModal({
     try {
       await moveNoteToFolder(noteId, selectedId);
       const folder = folders.find((f) => f.id === selectedId)!;
+      posthog.capture("note_moved_to_folder", { note_id: noteId, folder_id: selectedId, folder_name: folder.name });
       onMoved(folder);
       onClose();
     } catch (e: any) {

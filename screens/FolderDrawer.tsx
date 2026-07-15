@@ -21,6 +21,7 @@ import { useTheme } from "../theme";
 import { useNetwork } from "../hooks/useNetwork";
 import { Cache } from "../lib/cache";
 import { toast } from "../components/Toast";
+import { posthog } from "../lib/posthog";
 
 const DRAWER_WIDTH = Dimensions.get("window").width * 0.72;
 
@@ -126,6 +127,7 @@ export default function FolderDrawer({
     setCreating(true);
     try {
       const folder = await createFolder(userId, name);
+      posthog.capture("folder_created", { folder_name: name });
       setFolders((prev) => [...prev, folder]);
       setNewName("");
     } catch (e: any) {
@@ -394,7 +396,7 @@ export default function FolderDrawer({
 
         <TouchableOpacity
           style={[styles.signOutBtn, { borderColor: theme.borderDefault }]}
-          onPress={signOut}
+          onPress={() => { posthog.capture("sign_out"); signOut(); }}
         >
           <Text
             style={[

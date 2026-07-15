@@ -42,6 +42,7 @@ import {
 } from "../lib/adManager";
 import { toast } from "../components/Toast";
 import { useRemoteConfig } from "../context/RemoteConfigContext";
+import { posthog } from "../lib/posthog";
 
 type Props = NativeStackScreenProps<RootStackParamList, "NoteDetail">;
 
@@ -187,6 +188,7 @@ export default function NoteDetailScreen({ route, navigation }: Props) {
       title: note.title ?? "Stasis",
       message: `${note.title}\n\n${cleanMarkdownToPlainText(note.content)}\n\nSource: ${note.source_url}`,
     });
+    posthog.capture("note_shared", { note_id: note.id });
   };
 
   const handleOpenSource = async () => {
