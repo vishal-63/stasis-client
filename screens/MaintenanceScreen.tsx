@@ -1,12 +1,14 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Easing,
   StyleSheet,
   TouchableOpacity,
   View,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as Updates from "expo-updates";
 import { useTheme } from "../theme/ThemeContext";
 import { useRemoteConfig } from "../context/RemoteConfigContext";
 import { Text } from "../theme/components";
@@ -15,7 +17,8 @@ import { radius, spacing } from "../theme/spacing";
 
 export default function MaintenanceScreen() {
   const { theme } = useTheme();
-  const { refresh } = useRemoteConfig();
+  const { refresh, config, maintenanceMode } = useRemoteConfig();
+  const [isChecking, setIsChecking] = useState(false);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -60,6 +63,35 @@ export default function MaintenanceScreen() {
     pulse.start();
     return () => pulse.stop();
   }, []);
+
+  // Listen for config changes to trigger the reload
+  useEffect(() => {
+    if (!config) return;
+
+    const isMaintenanceOn = maintenanceMode;
+
+    // If the check confirms maintenance is off, force an app restart
+    if (!isMaintenanceOn) {
+      Updates.reloadAsync().catch(() => {
+        // Fallback for development environments where Updates API might not be available
+        console.log("App reload triggered (Updates API not available in dev)");
+      });
+    }
+  }, [config]);
+
+  const handleCheckAgain = async () => {
+    setIsChecking(true);
+    try {
+      // Trigger context to fetch the latest config from Supabase
+      await refresh();
+      // If maintenance mode is off, the useEffect above will catch it and reload the app.
+    } catch (error) {
+      console.error("Failed to check maintenance status:", error);
+    } finally {
+      // Only runs if the app doesn't reload (i.e., still in maintenance or error)
+      setIsChecking(false);
+    }
+  };
 
   return (
     <SafeAreaView
@@ -137,12 +169,17 @@ export default function MaintenanceScreen() {
               backgroundColor: theme.accentPrimary,
             },
           ]}
-          onPress={refresh}
+          onPress={handleCheckAgain}
           activeOpacity={0.8}
+          disabled={isChecking}
         >
-          <Text style={[styles.refreshBtnText, { color: theme.textInverse }]}>
-            Check again
-          </Text>
+          {isChecking ? (
+            <ActivityIndicator color={theme.textInverse} />
+          ) : (
+            <Text style={[styles.refreshBtnText, { color: theme.textInverse }]}>
+              Check again
+            </Text>
+          )}
         </TouchableOpacity>
 
         {/* Brand */}
@@ -236,7 +273,8 @@ const styles = StyleSheet.create({
   // Refresh button
   refreshBtn: {
     width: "100%",
-    paddingVertical: spacing[4],
+    height: 56,
+    justifyContent: "center",
     borderRadius: radius.md,
     alignItems: "center",
   },
