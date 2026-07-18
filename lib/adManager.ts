@@ -145,48 +145,53 @@ type ShowAdResult =
 
 export function showRewardedAd(): Promise<ShowAdResult> {
   return new Promise((resolve) => {
-    if (!rewardedAd || !adLoaded) {
-      resolve({ watched: false, reason: "not_loaded" });
-      return;
+    try {
+      if (!rewardedAd || !adLoaded) {
+        resolve({ watched: false, reason: "not_loaded" });
+        return;
+      }
+
+      let rewarded = false;
+
+      const unsubRewarded = rewardedAd.addAdEventListener(
+        RewardedAdEventType.EARNED_REWARD,
+        () => {
+          rewarded = true;
+          unsubRewarded();
+        },
+      );
+
+      const unsubClosed = rewardedAd.addAdEventListener(
+        AdEventType.CLOSED,
+        () => {
+          unsubClosed();
+          // Reset for next use
+          adLoaded = false;
+          rewardedAd = null;
+          // Preload next ad in background
+          preloadAd();
+
+          if (rewarded) {
+            resolve({ watched: true });
+          } else {
+            resolve({ watched: false, reason: "dismissed" });
+          }
+        },
+      );
+
+      const unsubError = rewardedAd.addAdEventListener(
+        AdEventType.ERROR,
+        (error) => {
+          unsubError();
+          adLoaded = false;
+          resolve({ watched: false, reason: "error" });
+        },
+      );
+
+      rewardedAd.show();
+    } catch (error) {
+      console.error("Error showing rewarded ad:", error);
+      resolve({ watched: false, reason: "error" });
     }
-
-    let rewarded = false;
-
-    const unsubRewarded = rewardedAd.addAdEventListener(
-      RewardedAdEventType.EARNED_REWARD,
-      () => {
-        rewarded = true;
-        unsubRewarded();
-      },
-    );
-
-    const unsubClosed = rewardedAd.addAdEventListener(
-      AdEventType.CLOSED,
-      () => {
-        unsubClosed();
-        // Reset for next use
-        adLoaded = false;
-        rewardedAd = null;
-        // Preload next ad in background
-        preloadAd();
-
-        if (rewarded) {
-          resolve({ watched: true });
-        } else {
-          resolve({ watched: false, reason: "dismissed" });
-        }
-      },
-    );
-
-    const unsubError = rewardedAd.addAdEventListener(
-      AdEventType.ERROR,
-      (error) => {
-        unsubError();
-        adLoaded = false;
-        resolve({ watched: false, reason: "error" });
-      },
-    );
-
-    rewardedAd.show();
   });
 }

@@ -92,7 +92,10 @@ function AppContent() {
         result = await extractKnowledgeFromUrl(user.id, url);
       }
 
-      posthog.capture("reel_submitted", { source_url: url, in_ad_free_window: inAdFreeWindow });
+      posthog.capture("reel_submitted", {
+        source_url: url,
+        in_ad_free_window: inAdFreeWindow,
+      });
       if (inAdFreeWindow) {
         await unlockNoteInAdFreeWindow(result.noteId);
       }

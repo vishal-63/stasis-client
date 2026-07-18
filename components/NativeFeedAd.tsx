@@ -10,13 +10,14 @@ import {
 } from "react-native-google-mobile-ads";
 import { display, fontSize, radius, spacing, ui, useTheme } from "../theme";
 import { Text } from "../theme/components";
+import { getAdUnitId } from "../lib/adConfig";
 
 export const NativeComponent = () => {
   const [nativeAd, setNativeAd] = useState<NativeAd>();
   const { theme } = useTheme();
 
   useEffect(() => {
-    NativeAd.createForAdRequest(TestIds.NATIVE)
+    NativeAd.createForAdRequest(getAdUnitId("native"))
       .then(setNativeAd)
       .catch(console.error);
   }, []);

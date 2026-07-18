@@ -10,6 +10,7 @@ import { useAuth } from "../context/AuthContext";
 import LoginScreen from "../screens/LoginScreen";
 import HomeScreen from "../screens/HomeScreen";
 import NoteDetailScreen from "../screens/NoteDetailScreen";
+import { posthog } from "../lib/posthog";
 
 export type RootStackParamList = {
   Home: { activeFolderId?: string } | undefined;
@@ -26,6 +27,7 @@ type Props = {
 
 export default function RootNavigator({ navigationRef }: Props) {
   const { session, loading } = useAuth();
+  const routeNameRef = React.useRef<string | undefined>(null);
 
   if (loading) {
     return (
@@ -38,6 +40,19 @@ export default function RootNavigator({ navigationRef }: Props) {
   return (
     <NavigationContainer
       ref={navigationRef}
+      onReady={async () => {
+        routeNameRef.current = navigationRef.current?.getCurrentRoute()?.name;
+        posthog.screen(routeNameRef.current ?? "Unknown Screen");
+      }}
+      onStateChange={async () => {
+        const previousRouteName = routeNameRef.current;
+        const currentRouteName = navigationRef.current?.getCurrentRoute()?.name;
+
+        if (previousRouteName !== currentRouteName) {
+          posthog.screen(routeNameRef.current ?? "Unknown Screen");
+        }
+        routeNameRef.current = currentRouteName;
+      }}
       linking={{
         prefixes: ["stasis://"],
         config: { screens: { AuthCallback: "auth/callback" } },
