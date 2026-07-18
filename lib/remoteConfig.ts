@@ -14,11 +14,6 @@ type ConfigKey =
 
 type Config = Record<ConfigKey, string>;
 
-// In-memory cache
-let cachedConfig: Config | null = null;
-let lastFetched: number = 0;
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
 const DEFAULTS: Config = {
   maintenance_mode: "false",
   feedback_enabled: "true",
@@ -33,11 +28,6 @@ const DEFAULTS: Config = {
 };
 
 export async function fetchRemoteConfig(): Promise<Config> {
-  // Return cache if still fresh
-  if (cachedConfig && Date.now() - lastFetched < CACHE_TTL) {
-    return cachedConfig;
-  }
-
   try {
     const { data, error } = await supabase.from("config").select("key, value");
 
@@ -56,8 +46,6 @@ export async function fetchRemoteConfig(): Promise<Config> {
       }
     }
 
-    cachedConfig = config;
-    lastFetched = Date.now();
     return config;
   } catch (e) {
     console.warn("Remote config error, using defaults:", e);
