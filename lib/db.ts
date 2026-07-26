@@ -47,7 +47,7 @@ export const getFolders = async (userId: string): Promise<Folder[]> => {
 export const createFolder = async (
   userId: string,
   name: string,
-  color = "#14BBA6",
+  color = "#000000",
 ): Promise<Folder> => {
   const { data, error } = await supabase
     .from("folders")

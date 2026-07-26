@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -117,7 +118,7 @@ export default function LoginScreen() {
         >
           {/* Brand */}
           <View style={styles.brand}>
-            <View
+            {/* <View
               style={[
                 styles.logo,
                 {
@@ -136,8 +137,9 @@ export default function LoginScreen() {
               >
                 S
               </Text>
-            </View>
-            <Text
+            </View> */}
+            <Image source={require("../assets/logo.png")} style={styles.logo} />
+            {/* <Text
               style={[
                 styles.appName,
                 {
@@ -149,7 +151,7 @@ export default function LoginScreen() {
             </Text>
             <Text variant="muted" style={styles.tagline}>
               Extract knowledge from Short-Form content
-            </Text>
+            </Text> */}
           </View>
 
           {/* Card */}
@@ -366,13 +368,13 @@ const styles = StyleSheet.create({
     gap: spacing[2],
   },
   logo: {
-    width: 80,
-    height: 80,
-    borderRadius: radius.xl,
+    width: 160,
+    height: 160,
+    // borderRadius: radius.xl,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: spacing[2],
-    borderWidth: 0.5,
+    // borderWidth: 0.5,
   },
   logoLetter: {
     ...display.brandName,

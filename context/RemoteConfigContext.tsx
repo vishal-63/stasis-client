@@ -9,8 +9,8 @@ type RemoteConfigContextType = {
   // Typed accessors
   maintenanceMode: boolean;
   feedbackEnabled: boolean;
-  update_available: boolean;
-  force_update: boolean;
+  updateAvailable: boolean;
+  forceUpdate: boolean;
   adsEnabled: boolean;
   rewardedAdsEnabled: boolean;
   nativeAdsEnabled: boolean;
@@ -23,8 +23,8 @@ const RemoteConfigContext = createContext<RemoteConfigContextType>({
   refresh: async () => {},
   maintenanceMode: false,
   feedbackEnabled: true,
-  update_available: false,
-  force_update: false,
+  updateAvailable: false,
+  forceUpdate: false,
   adsEnabled: false,
   rewardedAdsEnabled: false,
   nativeAdsEnabled: false,
@@ -75,8 +75,8 @@ export function RemoteConfigProvider({
         refresh: load,
         maintenanceMode: remoteConfig.bool(config as any, "maintenance_mode"),
         feedbackEnabled: remoteConfig.bool(config as any, "feedback_enabled"),
-        update_available: remoteConfig.bool(config as any, "update_available"),
-        force_update: remoteConfig.bool(config as any, "force_update"),
+        updateAvailable: remoteConfig.bool(config as any, "update_available"),
+        forceUpdate: remoteConfig.bool(config as any, "force_update"),
         ...isDone(config as any),
       }}
     >

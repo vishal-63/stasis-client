@@ -144,9 +144,15 @@ type ShowAdResult =
   | { watched: false; reason: "not_loaded" | "error" | "dismissed" };
 
 export function showRewardedAd(): Promise<ShowAdResult> {
-  return new Promise((resolve) => {
+  return new Promise(async (resolve) => {
     try {
+      console.log("Attempting to show rewarded ad...", rewardedAd, adLoaded);
+      if (!adLoaded) {
+        await preloadAd();
+      }
+
       if (!rewardedAd || !adLoaded) {
+        console.warn("Ad not loaded yet");
         resolve({ watched: false, reason: "not_loaded" });
         return;
       }

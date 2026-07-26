@@ -12,7 +12,7 @@ import {
   ViewProps,
 } from "react-native";
 import { radius, spacing } from "./spacing";
-import { display, ui } from "./typography";
+import { display, lineHeight, ui } from "./typography";
 import { useTheme } from "./ThemeContext";
 
 // ─── Text ─────────────────────────────────────────────────────────────
@@ -86,8 +86,8 @@ export function Button({
       container: {
         backgroundColor: isDisabled ? theme.borderStrong : theme.accentPrimary,
         borderRadius: radius.md,
-        paddingVertical: spacing[3],
-        paddingHorizontal: spacing[4],
+        // paddingVertical: spacing[3],
+        // paddingHorizontal: spacing[4],
         alignItems: "center" as const,
         justifyContent: "center" as const,
       },

@@ -17,7 +17,7 @@ type AuthContextType = {
   session: Session | null;
   user: User | null;
   loading: boolean;
-  signInWithOtp: (email: string) => Promise<void>; // replaces signInWithMagicLink
+  signInWithOtp: (email: string) => Promise<void>;
   // signInWithGoogle: () => Promise<void>;
   // signInWithApple: () => Promise<void>;
   signOut: () => Promise<void>;

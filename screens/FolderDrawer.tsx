@@ -396,7 +396,10 @@ export default function FolderDrawer({
 
         <TouchableOpacity
           style={[styles.signOutBtn, { borderColor: theme.borderDefault }]}
-          onPress={() => { posthog.capture("sign_out"); signOut(); }}
+          onPress={() => {
+            posthog.capture("sign_out");
+            signOut();
+          }}
         >
           <Text
             style={[

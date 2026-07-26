@@ -5,8 +5,9 @@ import "react-native-get-random-values";
 import { useEffect, useRef, useState } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ShareIntent, useShareIntent } from "expo-share-intent";
-import { Alert, View } from "react-native";
+import { ActivityIndicator, Alert, View } from "react-native";
 import { NavigationContainerRef } from "@react-navigation/native";
+import { requestTrackingPermissionsAsync } from "expo-tracking-transparency";
 
 import RootNavigator, { RootStackParamList } from "./navigation/RootNavigator";
 import ProcessingScreen from "./screens/ProcessingScreen";
@@ -47,6 +48,7 @@ import {
   unlockNoteInAdFreeWindow,
 } from "./lib/adManager";
 import { submitMockReelForProcessing } from "./lib/mockApi";
+import UpdatePopup from "./components/UpdatePopup";
 
 const SUPPORTED_URL_REGEX =
   /https:\/\/(?:(?:www\.|m\.)?instagram\.com\/reel\/[\w-]+\/?|(?:www\.|m\.)?youtube\.com\/shorts\/[\w-]+|youtu\.be\/[\w-]+)/;
@@ -65,7 +67,7 @@ function AppContent() {
   const [processing, setProcessing] = useState<ProcessingState>(null);
   const [processingPending, setProcessingPending] = useState<boolean>(false);
 
-  const { maintenanceMode, rewardedAdsEnabled, adFreeWindowMs } =
+  const { maintenanceMode, rewardedAdsEnabled, adFreeWindowMs, loading } =
     useRemoteConfig();
 
   const { hasShareIntent, shareIntent, resetShareIntent, error } =
@@ -86,11 +88,11 @@ function AppContent() {
 
     try {
       let result;
-      if (__DEV__) {
-        result = await submitMockReelForProcessing(user.id, url);
-      } else {
-        result = await extractKnowledgeFromUrl(user.id, url);
-      }
+      result = await extractKnowledgeFromUrl(user.id, url);
+      // if (__DEV__) {
+      //   result = await submitMockReelForProcessing(user.id, url);
+      // } else {
+      // }
 
       posthog.capture("reel_submitted", {
         source_url: url,
@@ -191,8 +193,6 @@ function AppContent() {
 
   // Ping backend every 10 minutes to prevent cold starts
   useEffect(() => {
-    if (rewardedAdsEnabled) preloadAd();
-
     const keepAlive = async () => {
       try {
         await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/health`);
@@ -203,6 +203,34 @@ function AppContent() {
     const interval = setInterval(keepAlive, 10 * 60 * 1000); // every 10 min
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    (async () => {
+      const { status } = await requestTrackingPermissionsAsync();
+      if (status === "granted") {
+        console.log("Tracking permission granted");
+        // Safe to initialize personalized ads and analytics tracking
+      } else {
+        console.log("Tracking permission denied");
+        // You must serve non-personalized ads and limit analytics tracking
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (rewardedAdsEnabled) {
+      preloadAd();
+    }
+  }, [rewardedAdsEnabled]);
+
+  // 1. Block the app from rendering its main logic until config is loaded
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
 
   // Maintenance mode gate in App.tsx
   if (maintenanceMode) {
@@ -260,6 +288,7 @@ export default function App() {
             <RemoteConfigProvider>
               <AppContent />
               <ToastContainer />
+              <UpdatePopup />
             </RemoteConfigProvider>
           </AuthProvider>
         </ThemeProvider>

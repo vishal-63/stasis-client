@@ -4,9 +4,14 @@
     "slug": "stasis",
     "scheme": "stasis",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "icon": "./assets/icon.png",
     "ios": {
       "bundleIdentifier": "com.vishal.stasis",
-      "backgroundColor": "#F8FAFC"
+      "backgroundColor": "#F8FAFC",
+      "supportsTablet": true
     },
     "android": {
       "package": "com.vishal.stasis",
@@ -19,12 +24,14 @@
               "scheme": "stasis"
             }
           ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
+          "category": ["BROWSABLE", "DEFAULT"]
         }
-      ]
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#F8FAFC"
+      },
+      "permissions": ["com.google.android.gms.permission.AD_ID"]
     },
     "plugins": [
       "expo-share-intent",
@@ -33,15 +40,21 @@
         {
           "androidAppId": "ca-app-pub-6180028035971404~9839816245",
           "iosAppId": "ca-app-pub-6180028035971404~1497302115",
-          "userTrackingPermission": "Stasis needs your permission to track your activity across apps and websites to deliver personalized sponsor videos."
+          "userTrackingUsageDescription": "This identifier will be used to deliver personalized ads to you."
         }
       ],
-      "expo-localization"
+      "expo-localization",
+      [
+        "expo-tracking-transparency",
+        {
+          "userTrackingPermission": "This identifier will be used to deliver personalized ads to you and help us improve the app through analytics."
+        }
+      ]
     ],
     "owner": "shahvishal662",
     "extra": {
       "eas": {
-        "projectId": "cdadbbfd-8e8a-4641-a4a6-c40e1a36704a"
+        "projectId": "3edc6287-1932-435e-b591-1f58853fb1ed"
       }
     }
   }

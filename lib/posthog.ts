@@ -1,12 +1,7 @@
 import PostHog from "posthog-react-native";
-import Constants from "expo-constants";
 
-const projectToken = Constants.expoConfig?.extra?.posthogProjectToken as
-  | string
-  | undefined;
-const host =
-  (Constants.expoConfig?.extra?.posthogHost as string) ||
-  "https://us.i.posthog.com";
+const projectToken = process.env.EXPO_PUBLIC_POSTHOG_PROJECT_TOKEN;
+const host = process.env.EXPO_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com";
 const isConfigured =
   !!projectToken &&
   projectToken !== "phc_zdJaYqaLszJmdU3myYsVcwwQouU6Jxi2LFWEiZNuXMYm";
